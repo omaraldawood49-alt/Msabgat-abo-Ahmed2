@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة الأدمن — منافسة الأسهم</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/shared/theme.css" />
+  <link rel="stylesheet" href="/admin/admin.css" />
+</head>
+<body>
+  <!-- تسجيل الدخول -->
+  <div id="loginScreen" class="login-wrap">
+    <div class="panel login-box">
+      <div class="brand center" style="justify-content:center;"><span class="dot"></span> لوحة تحكم المنافسة</div>
+      <p class="muted center">أدخل رمز الأدمن للدخول</p>
+      <div class="field">
+        <input id="pinInput" type="password" placeholder="رمز الأدمن" autocomplete="off" />
+      </div>
+      <button id="loginBtn" class="btn btn-accent btn-block">دخول</button>
+      <p id="loginErr" class="down center" style="min-height:18px;"></p>
+    </div>
+  </div>
+
+  <!-- اللوحة -->
+  <div id="dashboard" class="hidden">
+    <!-- شريط التحكم -->
+    <div class="control-bar">
+      <div class="cb-status">
+        <span class="badge" id="statusBadge">—</span>
+        <span class="cb-round">الجولة <b id="cbRound">0</b><span id="cbTotal"></span></span>
+        <span class="cb-timer mono" id="cbTimer"></span>
+        <span class="cb-mode muted" id="cbMode"></span>
+      </div>
+      <div class="cb-actions">
+        <button id="btnStart" class="btn btn-buy btn-sm">▶ بدء</button>
+        <button id="btnPause" class="btn btn-sm">⏸ إيقاف مؤقت</button>
+        <button id="btnResume" class="btn btn-sm">▶ استئناف</button>
+        <button id="btnEndRound" class="btn btn-sm">⏭ إنهاء الجولة</button>
+        <button id="btnNext" class="btn btn-primary btn-sm">⏩ الجولة التالية</button>
+        <button id="btnFinish" class="btn btn-sm">🏁 إنهاء المنافسة</button>
+        <button id="btnReset" class="btn btn-ghost btn-sm">🗑 إعادة تعيين</button>
+      </div>
+    </div>
+
+    <!-- التبويبات -->
+    <div class="tabs">
+      <button class="tab active" data-tab="setup">⚙️ الإعداد</button>
+      <button class="tab" data-tab="stocks">📈 الأسهم</button>
+      <button class="tab" data-tab="groups">👥 المجموعات</button>
+      <button class="tab" data-tab="links">🔗 الروابط</button>
+    </div>
+
+    <div class="tab-body">
+      <!-- إعداد -->
+      <section id="tab-setup" class="tab-pane active">
+        <div class="panel panel-pad">
+          <h3>إعدادات المنافسة</h3>
+          <div class="grid2">
+            <div class="field"><label>اسم المنافسة</label><input id="setName" /></div>
+            <div class="field"><label>نمط تغير الأسعار</label>
+              <select id="setMode">
+                <option value="auto">تلقائي (حسب العرض والطلب)</option>
+                <option value="manual">يدوي (نِسَب مُحددة لكل جولة)</option>
+              </select>
+            </div>
+            <div class="field"><label>عدد الجولات</label><input id="setRounds" type="number" min="1" value="10" /></div>
+            <div class="field"><label>مدة الجولة (ثانية)</label><input id="setDuration" type="number" min="10" value="90" /></div>
+            <div class="field"><label>المبلغ الابتدائي لكل مجموعة</label><input id="setCapital" type="number" min="0" value="100000" /></div>
+            <div class="field"><label>عدد المجموعات (عند الإنشاء)</label><input id="setGroups" type="number" min="1" value="4" /></div>
+            <div class="field"><label>عدد الأسهم (عند الإنشاء)</label><input id="setStocks" type="number" min="1" max="25" value="25" /></div>
+          </div>
+          <div class="row-actions">
+            <button id="btnCreate" class="btn btn-accent">🆕 إنشاء منافسة جديدة</button>
+            <button id="btnSaveSettings" class="btn btn-primary">💾 حفظ التعديلات</button>
+          </div>
+          <p class="muted" id="setupHint" style="margin-top:10px;"></p>
+        </div>
+      </section>
+
+      <!-- الأسهم -->
+      <section id="tab-stocks" class="tab-pane">
+        <div class="panel panel-pad">
+          <div class="pane-head">
+            <h3>إدارة الأسهم <span class="muted" id="stockCount"></span></h3>
+            <button id="btnAddStock" class="btn btn-sm btn-primary">➕ إضافة سهم</button>
+          </div>
+          <p class="muted" id="manualHint" style="margin-top:0;"></p>
+          <div id="stockTable" class="stock-table"></div>
+        </div>
+      </section>
+
+      <!-- المجموعات -->
+      <section id="tab-groups" class="tab-pane">
+        <div class="panel panel-pad">
+          <div class="pane-head">
+            <h3>المجموعات <span class="muted" id="groupCount"></span></h3>
+            <button id="btnAddGroup" class="btn btn-sm btn-primary">➕ إضافة مجموعة</button>
+          </div>
+          <div class="mass-cash">
+            <input id="massAmount" type="number" placeholder="المبلغ" style="max-width:160px;" />
+            <button id="btnMassAdd" class="btn btn-sm btn-buy">➕ للجميع</button>
+            <button id="btnMassSub" class="btn btn-sm btn-sell">➖ من الجميع</button>
+            <span class="muted">تعديل جماعي على نقد كل المجموعات</span>
+          </div>
+          <div id="groupTable" class="group-table"></div>
+        </div>
+      </section>
+
+      <!-- الروابط -->
+      <section id="tab-links" class="tab-pane">
+        <div class="panel panel-pad">
+          <h3>الروابط والرابط الأساسي</h3>
+          <div class="field">
+            <label>الرابط الأساسي (Base URL) — يُكتشف تلقائيًا، عدّله عند الحاجة (مثلاً للاستضافة السحابية)</label>
+            <div style="display:flex; gap:8px;">
+              <input id="baseUrlInput" placeholder="http://192.168.1.10:3000" />
+              <button id="btnSaveBase" class="btn btn-primary btn-sm">حفظ</button>
+            </div>
+          </div>
+          <div class="quick-links">
+            <div>شاشة العرض: <a id="lnkDisplay" href="/display" target="_blank">/display</a></div>
+            <div>صفحة المتسابق: <a id="lnkPlayer" href="/player" target="_blank">/player</a></div>
+          </div>
+          <p class="muted">أكواد وQR كل مجموعة موجودة في تبويب «المجموعات».</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- نافذة QR -->
+  <div id="qrModal" class="overlay hidden">
+    <div class="panel qr-box">
+      <button id="qrClose" class="qr-close">✕</button>
+      <h3 id="qrTitle" class="center">—</h3>
+      <div class="center"><img id="qrImg" alt="QR" width="280" height="280" /></div>
+      <div class="qr-code mono center" id="qrCode">—</div>
+      <div class="qr-url center muted" id="qrUrl"></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/sound.js"></script>
+  <script src="/shared/util.js"></script>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

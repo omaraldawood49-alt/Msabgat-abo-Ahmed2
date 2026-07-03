@@ -1,0 +1,156 @@
+/* ============================================================
+   منافسة الأسهم التعليمية — نظام تصميم مشترك (Dark / RTL)
+   ============================================================ */
+:root {
+  --bg: #060a12;
+  --bg-2: #0b1220;
+  --panel: #111a2b;
+  --panel-2: #16233a;
+  --border: #22314d;
+  --border-soft: #1a2740;
+  --text: #e8eef8;
+  --text-dim: #93a3bd;
+  --text-faint: #5f6f8c;
+
+  --up: #16c784;
+  --up-bg: rgba(22, 199, 132, 0.14);
+  --down: #ea3943;
+  --down-bg: rgba(234, 57, 67, 0.14);
+  --flat: #7a8aa5;
+  --flat-bg: rgba(122, 138, 165, 0.12);
+
+  --accent: #f0b90b;
+  --accent-2: #3b82f6;
+  --gold: #ffd54a;
+  --silver: #cfd8e6;
+  --bronze: #d68a4c;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
+  --font: "Segoe UI", Tahoma, "Noto Kufi Arabic", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: radial-gradient(1200px 700px at 80% -10%, #12203a 0%, var(--bg) 55%);
+  color: var(--text);
+  font-family: var(--font);
+  direction: rtl;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 { margin: 0 0 .4em; font-weight: 700; }
+a { color: var(--accent-2); }
+
+.mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+/* ---------- بطاقات ولوحات ---------- */
+.panel {
+  background: linear-gradient(180deg, var(--panel), var(--bg-2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.panel-pad { padding: 18px 20px; }
+
+/* ---------- أزرار ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 11px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .08s ease, filter .15s ease, background .15s ease;
+  font-family: inherit;
+}
+.btn:hover { filter: brightness(1.12); }
+.btn:active { transform: translateY(1px) scale(.99); }
+.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.btn-accent { background: linear-gradient(180deg, #f7c948, var(--accent)); color: #201a02; border-color: transparent; }
+.btn-primary { background: linear-gradient(180deg, #4c8dff, var(--accent-2)); color: #fff; border-color: transparent; }
+.btn-buy { background: linear-gradient(180deg, #1ad698, #12a06a); color: #04120c; border-color: transparent; }
+.btn-sell { background: linear-gradient(180deg, #ff5762, var(--down)); color: #fff; border-color: transparent; }
+.btn-ghost { background: transparent; }
+.btn-sm { padding: 7px 12px; font-size: 13px; }
+.btn-block { width: 100%; }
+
+/* ---------- حقول الإدخال ---------- */
+input, select {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 15px;
+  font-family: inherit;
+  width: 100%;
+}
+input:focus, select:focus { outline: none; border-color: var(--accent-2); }
+label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+.field { margin-bottom: 14px; }
+
+/* ---------- اتجاهات الأسعار ---------- */
+.up { color: var(--up); }
+.down { color: var(--down); }
+.flat { color: var(--flat); }
+.chip-up { background: var(--up-bg); color: var(--up); }
+.chip-down { background: var(--down-bg); color: var(--down); }
+.chip-flat { background: var(--flat-bg); color: var(--flat); }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 999px; font-size: 13px; font-weight: 700;
+}
+
+/* ---------- شارات ورؤوس ---------- */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 999px; padding: 5px 12px; font-size: 13px; color: var(--text-dim);
+}
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 14px 22px;
+  background: linear-gradient(180deg, rgba(17,26,43,.9), rgba(11,18,32,.6));
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(6px);
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; }
+.brand .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+
+.muted { color: var(--text-dim); }
+.faint { color: var(--text-faint); }
+.center { text-align: center; }
+.hidden { display: none !important; }
+.flash { animation: flash .5s ease; }
+@keyframes flash { 0% { background: rgba(255,255,255,.14); } 100% { background: transparent; } }
+
+/* شريط تمرير رفيع */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: #223351; border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* توست إشعارات */
+#toast {
+  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 8px; z-index: 9999; align-items: center;
+}
+.toast-item {
+  background: var(--panel-2); border: 1px solid var(--border);
+  padding: 11px 18px; border-radius: 10px; box-shadow: var(--shadow);
+  font-size: 14px; animation: toastIn .25s ease;
+}
+.toast-ok { border-color: var(--up); }
+.toast-err { border-color: var(--down); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
