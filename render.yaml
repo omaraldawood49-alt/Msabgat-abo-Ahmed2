@@ -1,0 +1,16 @@
+# Render Blueprint — نشر تلقائي لمنافسة الأسهم التعليمية
+# ارفع المشروع بضغطة واحدة: من render.com اختر New + → Blueprint → هذا المستودع.
+services:
+  - type: web
+    name: msabgat-alashum
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/config
+    envVars:
+      # رمز دخول لوحة الأدمن — سيطلب منك Render إدخال قيمته عند الرفع.
+      - key: ADMIN_PIN
+        sync: false
+      - key: NODE_VERSION
+        value: "20"
