@@ -24,7 +24,7 @@
 
   // ---------- الرأس ----------
   function updateHeader(s) {
-    document.getElementById('compName').textContent = s.name || 'منافسة الأسهم التعليمية';
+    document.getElementById('compName').textContent = s.name || 'بورصة رواحل';
     document.getElementById('roundNum').textContent = s.currentRound || '—';
     document.getElementById('roundTotal').textContent = s.rounds ? ' / ' + s.rounds : '';
 

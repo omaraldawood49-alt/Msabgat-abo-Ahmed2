@@ -52,7 +52,7 @@ function makeGroup(name, initialCapital, existingCodes = new Set()) {
  */
 function createCompetition(opts = {}) {
   const {
-    name = 'منافسة الأسهم التعليمية',
+    name = 'بورصة رواحل',
     rounds = 10,
     roundDurationSec = 90,
     groupCount = 4,
@@ -93,7 +93,7 @@ function createCompetition(opts = {}) {
     // تجميع تدفّق التداول للجولة الحالية (للنمط التلقائي): { stockId: netQty }
     roundFlow: {},
 
-    news: ['مرحبًا بكم في منافسة الأسهم التعليمية — استعدوا لبدء التداول!'],
+    news: ['مرحبًا بكم في بورصة رواحل — استعدوا لبدء التداول!'],
     lastMoves: [],
     createdAt: Date.now(),
   };

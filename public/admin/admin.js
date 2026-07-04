@@ -78,7 +78,7 @@
   };
   function readSetup() {
     return {
-      name: document.getElementById('setName').value || 'منافسة الأسهم التعليمية',
+      name: document.getElementById('setName').value || 'بورصة رواحل',
       pricingMode: document.getElementById('setMode').value,
       rounds: parseInt(document.getElementById('setRounds').value, 10) || 10,
       roundDurationSec: parseInt(document.getElementById('setDuration').value, 10) || 90,

@@ -51,7 +51,7 @@ app.get('/player', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'player', 'i
 
 server.listen(PORT, () => {
   console.log('==================================================');
-  console.log('  منافسة الأسهم التعليمية — Educational Stock Market');
+  console.log('  بورصة رواحل — Educational Stock Market');
   console.log('==================================================');
   console.log(`  الخادم يعمل على المنفذ: ${PORT}`);
   console.log(`  شاشة العرض:   http://localhost:${PORT}/display`);

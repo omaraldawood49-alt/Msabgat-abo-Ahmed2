@@ -1,4 +1,4 @@
-# Render Blueprint — نشر تلقائي لمنافسة الأسهم التعليمية
+# Render Blueprint — نشر تلقائي لبورصة رواحل
 # ارفع المشروع بضغطة واحدة: من render.com اختر New + → Blueprint → هذا المستودع.
 services:
   - type: web
