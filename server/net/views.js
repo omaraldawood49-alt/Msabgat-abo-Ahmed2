@@ -32,19 +32,27 @@ function baseMeta(comp) {
   };
 }
 
-/** حالة شاشة العرض: الميتا + الأسهم + لوحة الترتيب (بدون أكواد الدخول). */
+/**
+ * حالة شاشة العرض: الميتا + الأسهم فقط أثناء اللعب.
+ * ترتيب/ثروة المجموعات مخفية تمامًا حتى انتهاء المنافسة (تُكشف في الختام فقط).
+ */
 function displayState(comp) {
   if (!comp) return { active: false };
-  const summary = Competition.groupsSummary(comp).map((r) => ({
-    id: r.id,
-    name: r.name,
-    wealth: r.wealth,
-    pnl: r.pnl,
-    pnlPct: r.pnlPct,
-    rank: r.rank,
-  }));
+  const finished = comp.status === 'finished';
+  // لا نُرسل بيانات المجموعات إطلاقًا قبل النهاية
+  const summary = finished
+    ? Competition.groupsSummary(comp).map((r) => ({
+        id: r.id,
+        name: r.name,
+        wealth: r.wealth,
+        pnl: r.pnl,
+        pnlPct: r.pnlPct,
+        rank: r.rank,
+      }))
+    : [];
   return Object.assign({ active: true }, baseMeta(comp), {
     stocks: comp.stocks.map(publicStock),
+    rankingHidden: !finished,
     leaderboard: summary,
     lastMoves: comp.lastMoves || [],
   });

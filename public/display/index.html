@@ -12,7 +12,7 @@
   <!-- طبقة البدء (لتفعيل الصوت) -->
   <div id="startOverlay" class="overlay">
     <div class="overlay-inner">
-      <div class="brand" style="font-size:26px; justify-content:center;"><span class="dot"></span> بورصة رواحل</div>
+      <div class="brand" style="font-size:30px; justify-content:center;"><span class="dot"></span> بورصة رواحل</div>
       <p class="muted">شاشة العرض الرئيسية</p>
       <button id="startBtn" class="btn btn-accent" style="font-size:18px; padding:14px 34px; margin-top:14px;">▶ بدء العرض</button>
     </div>
@@ -25,7 +25,10 @@
       <div class="market-status" id="marketStatus"><span class="live-dot"></span><span id="statusText">بانتظار البدء</span></div>
     </div>
     <div class="dhead-round">
-      <div class="round-num">الجولة <span id="roundNum">—</span><span class="round-total" id="roundTotal"></span></div>
+      <div class="lock-chip">🔒 يظهر ترتيب الفرق في الختام</div>
+      <div class="round-box">
+        <div class="round-num">الجولة <span id="roundNum">—</span><span class="round-total" id="roundTotal"></span></div>
+      </div>
       <div class="countdown">
         <svg viewBox="0 0 120 120" class="ring">
           <circle class="ring-bg" cx="60" cy="60" r="52" />
@@ -36,19 +39,9 @@
     </div>
   </header>
 
-  <!-- المحتوى -->
-  <main class="dmain">
-    <section class="tickers panel">
-      <div class="tickers-head">
-        <span>السهم</span><span>السعر</span><span>التغير</span>
-      </div>
-      <div id="tickerGrid" class="ticker-grid"></div>
-    </section>
-
-    <aside class="leaderboard panel">
-      <h3 class="lb-title">🏆 الترتيب المباشر</h3>
-      <div id="leaderList" class="leader-list"></div>
-    </aside>
+  <!-- شبكة الأسهم الزجاجية -->
+  <main class="glass-main">
+    <div id="stockGrid" class="glass-grid"></div>
   </main>
 
   <!-- شريط الأخبار -->
@@ -68,7 +61,7 @@
   <!-- طبقة التتويج النهائية -->
   <div id="podiumOverlay" class="overlay hidden">
     <div class="podium-wrap">
-      <h1 class="podium-title">🏆 نتائج المنافسة النهائية</h1>
+      <h1 class="podium-title">🏆 نتائج بورصة رواحل النهائية</h1>
       <div id="podium" class="podium"></div>
       <div id="podiumRest" class="podium-rest"></div>
     </div>

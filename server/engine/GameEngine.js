@@ -175,8 +175,8 @@ class GameEngine extends EventEmitter {
     this._clearTimers();
     comp.status = 'finished';
     comp.roundState = 'idle';
-    const podium = Competition.groupsSummary(comp).slice(0, 3);
-    this.emit('competition:finished', { podium });
+    const standings = Competition.groupsSummary(comp);
+    this.emit('competition:finished', { standings, podium: standings.slice(0, 3) });
     this.emit('state');
   }
 

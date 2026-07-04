@@ -52,8 +52,8 @@ function attachSockets(io, engine) {
       transitionMs: require('../engine/GameEngine').TRANSITION_MS,
     });
   });
-  engine.on('competition:finished', ({ podium }) => {
-    io.emit('competition:finished', { podium, name: engine.comp.name });
+  engine.on('competition:finished', ({ standings, podium }) => {
+    io.emit('competition:finished', { standings, podium, name: engine.comp.name });
   });
 
   // ------- الاتصال -------

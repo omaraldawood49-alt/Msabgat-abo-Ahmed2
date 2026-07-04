@@ -1,113 +1,123 @@
-/* شاشة العرض (بروجكتر) */
-body { overflow: hidden; height: 100vh; }
+/* شاشة العرض — الشبكة الزجاجية (Glassmorphism) */
+body {
+  overflow: hidden; height: 100vh; color: #fff;
+  background: linear-gradient(135deg, #7c3aed 0%, #5b8def 45%, #22c1c3 100%) fixed;
+}
 
+/* ---------- طبقات عامة ---------- */
 .overlay {
   position: fixed; inset: 0; z-index: 1000;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, rgba(38,20,84,.95), rgba(20,32,86,.95) 55%, rgba(6,60,110,.95));
-  backdrop-filter: blur(10px);
-  color: #eef2ff;
+  backdrop-filter: blur(10px); color: #eef2ff;
 }
 .overlay .muted { color: #c3ccec; }
 .overlay-inner { text-align: center; }
 
+/* ---------- الرأس ---------- */
 .dhead {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 30px; border-bottom: none;
-  background: var(--fest);
-  color: #ffffff;
-  box-shadow: 0 8px 24px rgba(80, 60, 180, .22);
+  padding: 18px 34px;
 }
-.dhead .brand, .dhead .round-num { color: #fff; }
-.dhead-title .brand { font-size: 26px; }
-.dhead-title .dot { width: 14px; height: 14px; background: #fff; box-shadow: 0 0 12px rgba(255,255,255,.8); }
-.market-status { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 15px; color: rgba(255,255,255,.82); }
+.dhead .brand { font-size: 30px; font-weight: 900; color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.28); }
+.dhead-title .dot { width: 14px; height: 14px; background: #fff; box-shadow: 0 0 14px rgba(255,255,255,.85); }
+.market-status { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 15px; color: rgba(255,255,255,.85); }
 .live-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.55); display: inline-block; }
 .market-status.open .live-dot { background: #3dffb0; box-shadow: 0 0 12px #3dffb0; animation: pulse 1.4s infinite; }
-.market-status.closed .live-dot { background: #ff8a94; }
+.market-status.closed .live-dot { background: #ff9aa6; }
 @keyframes pulse { 50% { opacity: .3; } }
 
-.dhead-round { display: flex; align-items: center; gap: 22px; }
-.round-num { font-size: 26px; font-weight: 800; }
-.round-total { color: rgba(255,255,255,.8); font-size: 18px; margin-inline-start: 4px; }
-.countdown { position: relative; width: 92px; height: 92px; }
-.ring { transform: rotate(-90deg); width: 92px; height: 92px; }
+.dhead-round { display: flex; align-items: center; gap: 18px; }
+.lock-chip {
+  background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.34);
+  color: #fff; border-radius: 999px; padding: 9px 16px; font-size: 15px; font-weight: 800;
+  backdrop-filter: blur(6px);
+}
+.round-box { text-align: center; }
+.round-num { font-size: 24px; font-weight: 800; color: #fff; }
+.round-total { color: rgba(255,255,255,.8); font-size: 17px; margin-inline-start: 4px; }
+.countdown { position: relative; width: 88px; height: 88px; }
+.ring { transform: rotate(-90deg); width: 88px; height: 88px; }
 .ring-bg { fill: none; stroke: rgba(255,255,255,.28); stroke-width: 8; }
 .ring-fg { fill: none; stroke: #ffe08a; stroke-width: 8; stroke-linecap: round;
   stroke-dasharray: 326.7; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear, stroke .3s; }
-.ring-time { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; color: #fff; }
+.ring-time { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #fff; }
 
-.dmain { display: grid; grid-template-columns: 1fr 380px; gap: 18px; padding: 18px 30px; height: calc(100vh - 92px - 62px); }
-
-.tickers { display: flex; flex-direction: column; overflow: hidden; }
-.tickers-head, .ticker-row {
-  display: grid; grid-template-columns: 1fr 200px 200px; align-items: center;
-  padding: 0 22px;
+/* ---------- شبكة الأسهم الزجاجية ---------- */
+.glass-main { height: calc(100vh - 108px - 54px); padding: 4px 30px 14px; }
+.glass-grid {
+  display: grid; gap: 14px; height: 100%;
+  grid-template-columns: repeat(auto-fill, minmax(224px, 1fr));
+  grid-auto-rows: 1fr;
 }
-.tickers-head { padding: 14px 22px; color: var(--text-dim); font-size: 15px; border-bottom: 1px solid var(--border); }
-.tickers-head span:not(:first-child), .ticker-row > *:not(:first-child) { text-align: center; }
-.ticker-grid { overflow-y: auto; flex: 1; }
-.ticker-row { padding: 12px 22px; border-bottom: 1px solid var(--border-soft); transition: background .3s; }
-.ticker-row .name { font-size: 19px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
-.ticker-row .price { font-size: 24px; font-weight: 800; }
-.ticker-row .change { font-size: 18px; font-weight: 700; }
-.ticker-row.up-flash { background: var(--up-bg); }
-.ticker-row.down-flash { background: var(--down-bg); }
-.spark { width: 6px; height: 26px; border-radius: 3px; background: var(--flat); }
-.spark.up { background: var(--up); box-shadow: 0 0 10px var(--up); }
-.spark.down { background: var(--down); box-shadow: 0 0 10px var(--down); }
-
-.leaderboard { padding: 16px 18px; display: flex; flex-direction: column; overflow: hidden; }
-.lb-title { font-size: 19px; margin-bottom: 10px; }
-.leader-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; }
-.leader-row {
-  display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 10px;
-  padding: 11px 12px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--border-soft);
-  transition: transform .5s cubic-bezier(.2,.8,.2,1), background .3s;
+.gcard {
+  background: rgba(255,255,255,.14);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  border: 1px solid rgba(255,255,255,.32);
+  border-radius: 16px; padding: 13px 15px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  overflow: hidden; min-height: 0;
+  box-shadow: 0 8px 24px rgba(20,20,60,.14);
+  transition: background .35s, box-shadow .35s;
 }
-.leader-row .rank { font-size: 18px; font-weight: 800; text-align: center; }
-.leader-row .gname { font-weight: 700; font-size: 16px; }
-.leader-row .wealth { font-weight: 800; font-size: 17px; }
-.leader-row .pnl { font-size: 12px; }
-.leader-row.r1 { background: linear-gradient(180deg, rgba(255,213,74,.18), var(--panel-2)); border-color: var(--gold); }
-.leader-row.r2 { border-color: var(--silver); }
-.leader-row.r3 { border-color: var(--bronze); }
-.medal { font-size: 18px; }
+.gcard.up-flash { background: rgba(90,255,190,.28); box-shadow: 0 0 26px rgba(60,255,170,.35); }
+.gcard.down-flash { background: rgba(255,120,140,.28); box-shadow: 0 0 26px rgba(255,90,110,.32); }
+.gc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.gc-name { font-size: 17px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gc-arrow {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 30px; height: 24px; padding: 0 8px; border-radius: 999px; font-size: 14px; font-weight: 900;
+  background: rgba(255,255,255,.22); color: #fff;
+}
+.gc-arrow.up { background: rgba(45,229,157,.35); color: #063; }
+.gc-arrow.down { background: rgba(255,109,123,.4); color: #fff; }
+.gc-price { font-size: 26px; font-weight: 900; color: #fff; margin: 2px 0; }
+.gc-spark { flex: 1 1 auto; min-height: 30px; display: flex; align-items: stretch; }
+.gc-spark svg { width: 100%; height: 100%; }
+.gc-change { font-size: 15px; font-weight: 800; }
+.gc-change.up { color: #7dffc4; } .gc-change.down { color: #ffb3bd; } .gc-change.flat { color: #e6ecff; }
 
-.newsbar { display: flex; align-items: center; height: 62px; border-top: 1px solid var(--border); background: var(--bg-2); }
-.news-label { flex: 0 0 auto; padding: 0 20px; height: 100%; display: flex; align-items: center; font-weight: 800; background: var(--accent); color: #201a02; }
+/* ---------- شريط الأخبار ---------- */
+.newsbar { display: flex; align-items: center; height: 54px; background: rgba(10,14,40,.35); border-top: 1px solid rgba(255,255,255,.18); backdrop-filter: blur(6px); }
+.news-label { flex: 0 0 auto; padding: 0 20px; height: 100%; display: flex; align-items: center; font-weight: 900; background: rgba(255,255,255,.9); color: #3d2b6b; }
 .news-viewport { flex: 1; overflow: hidden; white-space: nowrap; }
-.news-track { display: inline-block; padding-inline-start: 100%; animation: marquee 26s linear infinite; font-size: 17px; }
+.news-track { display: inline-block; padding-inline-start: 100%; animation: marquee 26s linear infinite; font-size: 16px; color: #fff; }
 .news-track span { margin: 0 40px; }
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(200%); } }
 
-/* الانتقال */
+/* ---------- الانتقال ---------- */
 .trans-inner { text-align: center; }
-.count-big { font-size: 160px; font-weight: 900; line-height: 1; color: #ffd54a; text-shadow: 0 0 44px rgba(255,213,74,.6); animation: popCount .8s ease; }
+.count-big { font-size: 150px; font-weight: 900; line-height: 1; color: #ffd54a; text-shadow: 0 0 44px rgba(255,213,74,.6); animation: popCount .8s ease; }
 .trans-msg { font-size: 26px; color: #eef2ff; margin-top: 10px; }
 @keyframes popCount { 0% { transform: scale(.3); opacity: 0; } 40% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
 
-/* التتويج */
+/* ---------- التتويج ---------- */
 .podium-wrap { text-align: center; width: min(900px, 92vw); }
-.podium-title { font-size: 40px; margin-bottom: 30px; }
+.podium-title { font-size: 40px; margin-bottom: 30px; background: linear-gradient(90deg,#ffd54a,#ff8bd0,#7ee7ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .podium { display: flex; align-items: flex-end; justify-content: center; gap: 18px; }
 .pod { border-radius: 14px 14px 0 0; padding: 20px 16px; width: 200px; display: flex; flex-direction: column; align-items: center; gap: 6px; animation: rise .7s cubic-bezier(.2,.9,.3,1) both; }
 .pod .medal { font-size: 46px; }
 .pod .pname { font-size: 22px; font-weight: 800; }
 .pod .pwealth { font-size: 19px; font-weight: 700; }
-.pod.p1 { height: 260px; background: linear-gradient(180deg, rgba(255,213,74,.32), rgba(255,213,74,.06)); border: 1px solid var(--gold); animation-delay:.4s; }
-.pod.p2 { height: 210px; background: linear-gradient(180deg, rgba(207,216,230,.28), rgba(207,216,230,.05)); border: 1px solid var(--silver); animation-delay:.2s; }
-.pod.p3 { height: 175px; background: linear-gradient(180deg, rgba(214,138,76,.28), rgba(214,138,76,.05)); border: 1px solid var(--bronze); }
+.pod.p1 { height: 260px; background: linear-gradient(180deg, rgba(255,213,74,.34), rgba(255,213,74,.08)); border: 1px solid var(--gold); animation-delay:.4s; }
+.pod.p2 { height: 210px; background: linear-gradient(180deg, rgba(207,216,230,.3), rgba(207,216,230,.06)); border: 1px solid var(--silver); animation-delay:.2s; }
+.pod.p3 { height: 175px; background: linear-gradient(180deg, rgba(214,138,76,.3), rgba(214,138,76,.06)); border: 1px solid var(--bronze); }
 @keyframes rise { from { transform: translateY(60px); opacity: 0; } to { transform: none; opacity: 1; } }
-.podium-rest { margin-top: 26px; display: flex; flex-direction: column; gap: 6px; align-items: center; color: #c3ccec; }
-.podium-title { background: linear-gradient(90deg,#ffd54a,#ff8bd0,#7ee7ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.podium-rest { margin-top: 26px; display: flex; flex-direction: column; gap: 6px; align-items: center; color: #d7ddf5; }
 
-/* قصاصات الاحتفال (Confetti) */
+/* ---------- قصاصات الاحتفال ---------- */
 .confetti { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 1200; }
 .confetti i { position: absolute; top: -12px; width: 10px; height: 14px; border-radius: 2px; opacity: .95; animation: confFall linear forwards; }
 @keyframes confFall { to { transform: translateY(108vh) rotate(760deg); opacity: 1; } }
 
-@media (max-width: 1100px) {
-  .dmain { grid-template-columns: 1fr; height: auto; }
+@media (max-width: 1000px) {
+  .glass-main { height: auto; }
   body { overflow: auto; height: auto; }
+  .glass-grid { grid-auto-rows: 150px; }
+  .dhead { flex-wrap: wrap; gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .count-big, .pod, .confetti i, .live-dot { animation: none !important; }
+  .news-track { animation-duration: 60s; }
 }
