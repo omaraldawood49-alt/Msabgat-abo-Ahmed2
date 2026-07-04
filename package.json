@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
+    "build": "echo \"لا حاجة لخطوة بناء — واجهات HTML/JS خام\"",
     "test": "node --test"
   },
   "engines": {
