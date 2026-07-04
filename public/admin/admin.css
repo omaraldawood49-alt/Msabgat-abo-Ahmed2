@@ -5,9 +5,15 @@
 .control-bar {
   position: sticky; top: 0; z-index: 50;
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
-  padding: 12px 22px; background: linear-gradient(180deg, var(--panel), rgba(11,18,32,.96));
-  border-bottom: 1px solid var(--border); backdrop-filter: blur(8px);
+  padding: 12px 22px; background: var(--fest);
+  color: #fff;
+  border-bottom: none; box-shadow: 0 6px 20px rgba(80,60,180,.18);
 }
+.control-bar .cb-round, .control-bar .cb-round b { color: #fff; }
+.control-bar .cb-timer { color: #ffe08a; }
+.control-bar .badge { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.25); color: #fff; }
+.control-bar .cb-mode { color: rgba(255,255,255,.85) !important; }
+.control-bar .btn-ghost { color: #fff; border-color: rgba(255,255,255,.35); }
 .cb-status { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .cb-round { font-size: 15px; } .cb-round b { font-size: 18px; }
 .cb-timer { font-size: 18px; font-weight: 800; color: var(--accent); min-width: 42px; }
@@ -57,7 +63,7 @@
 .quick-links { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
 
 /* نافذة QR */
-.overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(6,10,18,.85); }
+.overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(24,20,54,.55); backdrop-filter: blur(3px); }
 .qr-box { position: relative; padding: 24px; max-width: 340px; }
 .qr-close { position: absolute; top: 10px; left: 12px; background: transparent; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; }
 .qr-box img { background: #fff; border-radius: 10px; padding: 8px; }

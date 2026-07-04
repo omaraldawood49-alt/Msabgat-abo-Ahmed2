@@ -135,10 +135,30 @@
   function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
   // ---------- أحداث الجولات ----------
+  var splashTimer = null;
   function onRoundOpen(d) {
-    hideTransition();
+    animating = false;
     Sound.roundStart();
     if (lastState) renderTickers(lastState, null);
+    showRoundSplash(d.round);
+  }
+
+  // لافتة انطلاق الجولة الجديدة على شاشة العرض
+  function showRoundSplash(n) {
+    var overlay = document.getElementById('transitionOverlay');
+    var countBig = document.getElementById('countBig');
+    var transMsg = document.getElementById('transMsg');
+    countBig.textContent = 'الجولة ' + n;
+    countBig.style.fontSize = '110px';
+    countBig.classList.remove('count-big'); void countBig.offsetWidth; countBig.classList.add('count-big');
+    transMsg.textContent = '🚀 انطلقوا!';
+    overlay.classList.remove('hidden');
+    Sound.go();
+    clearTimeout(splashTimer);
+    splashTimer = setTimeout(function () {
+      overlay.classList.add('hidden');
+      countBig.style.fontSize = '';
+    }, 1500);
   }
 
   function onTransition(d) {
@@ -210,8 +230,28 @@
   function hideTransition() { document.getElementById('transitionOverlay').classList.add('hidden'); }
 
   // ---------- التتويج ----------
+  function launchConfetti() {
+    var old = document.querySelector('.confetti');
+    if (old) old.remove();
+    var wrap = el('div', { class: 'confetti' });
+    var colors = ['#ffd54a', '#ff8bd0', '#7ee7ff', '#6d5efc', '#2ee59d', '#ff6d7b', '#f5a524'];
+    for (var i = 0; i < 90; i++) {
+      var piece = document.createElement('i');
+      piece.style.left = Math.random() * 100 + 'vw';
+      piece.style.background = colors[i % colors.length];
+      piece.style.animationDuration = (2.6 + Math.random() * 2.4) + 's';
+      piece.style.animationDelay = (Math.random() * 1.2) + 's';
+      piece.style.height = (10 + Math.random() * 10) + 'px';
+      piece.style.transform = 'rotate(' + Math.random() * 360 + 'deg)';
+      wrap.appendChild(piece);
+    }
+    document.body.appendChild(wrap);
+    setTimeout(function () { wrap.remove(); }, 9000);
+  }
+
   function onFinished(d) {
     Sound.win();
+    launchConfetti();
     var overlay = document.getElementById('podiumOverlay');
     var podium = document.getElementById('podium');
     var rest = document.getElementById('podiumRest');

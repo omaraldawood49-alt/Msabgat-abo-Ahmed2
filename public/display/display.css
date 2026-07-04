@@ -4,32 +4,38 @@ body { overflow: hidden; height: 100vh; }
 .overlay {
   position: fixed; inset: 0; z-index: 1000;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(6, 10, 18, 0.92); backdrop-filter: blur(10px);
+  background: linear-gradient(135deg, rgba(38,20,84,.95), rgba(20,32,86,.95) 55%, rgba(6,60,110,.95));
+  backdrop-filter: blur(10px);
+  color: #eef2ff;
 }
+.overlay .muted { color: #c3ccec; }
 .overlay-inner { text-align: center; }
 
 .dhead {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 30px; border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(17,26,43,.7), transparent);
+  padding: 16px 30px; border-bottom: none;
+  background: var(--fest);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(80, 60, 180, .22);
 }
+.dhead .brand, .dhead .round-num { color: #fff; }
 .dhead-title .brand { font-size: 26px; }
-.dhead-title .dot { width: 14px; height: 14px; }
-.market-status { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 15px; color: var(--text-dim); }
-.live-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--flat); display: inline-block; }
-.market-status.open .live-dot { background: var(--up); box-shadow: 0 0 12px var(--up); animation: pulse 1.4s infinite; }
-.market-status.closed .live-dot { background: var(--down); }
+.dhead-title .dot { width: 14px; height: 14px; background: #fff; box-shadow: 0 0 12px rgba(255,255,255,.8); }
+.market-status { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 15px; color: rgba(255,255,255,.82); }
+.live-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.55); display: inline-block; }
+.market-status.open .live-dot { background: #3dffb0; box-shadow: 0 0 12px #3dffb0; animation: pulse 1.4s infinite; }
+.market-status.closed .live-dot { background: #ff8a94; }
 @keyframes pulse { 50% { opacity: .3; } }
 
 .dhead-round { display: flex; align-items: center; gap: 22px; }
 .round-num { font-size: 26px; font-weight: 800; }
-.round-total { color: var(--text-dim); font-size: 18px; margin-inline-start: 4px; }
+.round-total { color: rgba(255,255,255,.8); font-size: 18px; margin-inline-start: 4px; }
 .countdown { position: relative; width: 92px; height: 92px; }
 .ring { transform: rotate(-90deg); width: 92px; height: 92px; }
-.ring-bg { fill: none; stroke: var(--border); stroke-width: 8; }
-.ring-fg { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round;
+.ring-bg { fill: none; stroke: rgba(255,255,255,.28); stroke-width: 8; }
+.ring-fg { fill: none; stroke: #ffe08a; stroke-width: 8; stroke-linecap: round;
   stroke-dasharray: 326.7; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear, stroke .3s; }
-.ring-time { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; }
+.ring-time { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; color: #fff; }
 
 .dmain { display: grid; grid-template-columns: 1fr 380px; gap: 18px; padding: 18px 30px; height: calc(100vh - 92px - 62px); }
 
@@ -77,8 +83,8 @@ body { overflow: hidden; height: 100vh; }
 
 /* الانتقال */
 .trans-inner { text-align: center; }
-.count-big { font-size: 160px; font-weight: 900; line-height: 1; color: var(--accent); text-shadow: 0 0 40px rgba(240,185,11,.5); animation: popCount .8s ease; }
-.trans-msg { font-size: 26px; color: var(--text); margin-top: 10px; }
+.count-big { font-size: 160px; font-weight: 900; line-height: 1; color: #ffd54a; text-shadow: 0 0 44px rgba(255,213,74,.6); animation: popCount .8s ease; }
+.trans-msg { font-size: 26px; color: #eef2ff; margin-top: 10px; }
 @keyframes popCount { 0% { transform: scale(.3); opacity: 0; } 40% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
 
 /* التتويج */
@@ -93,7 +99,13 @@ body { overflow: hidden; height: 100vh; }
 .pod.p2 { height: 210px; background: linear-gradient(180deg, rgba(207,216,230,.28), rgba(207,216,230,.05)); border: 1px solid var(--silver); animation-delay:.2s; }
 .pod.p3 { height: 175px; background: linear-gradient(180deg, rgba(214,138,76,.28), rgba(214,138,76,.05)); border: 1px solid var(--bronze); }
 @keyframes rise { from { transform: translateY(60px); opacity: 0; } to { transform: none; opacity: 1; } }
-.podium-rest { margin-top: 26px; display: flex; flex-direction: column; gap: 6px; align-items: center; color: var(--text-dim); }
+.podium-rest { margin-top: 26px; display: flex; flex-direction: column; gap: 6px; align-items: center; color: #c3ccec; }
+.podium-title { background: linear-gradient(90deg,#ffd54a,#ff8bd0,#7ee7ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* قصاصات الاحتفال (Confetti) */
+.confetti { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 1200; }
+.confetti i { position: absolute; top: -12px; width: 10px; height: 14px; border-radius: 2px; opacity: .95; animation: confFall linear forwards; }
+@keyframes confFall { to { transform: translateY(108vh) rotate(760deg); opacity: 1; } }
 
 @media (max-width: 1100px) {
   .dmain { grid-template-columns: 1fr; height: auto; }
