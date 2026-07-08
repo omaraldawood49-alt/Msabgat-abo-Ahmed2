@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="/admin/admin.css" />
 </head>
 <body>
-  <!-- تسجيل الدخول -->
-  <div id="loginScreen" class="login-wrap">
+  <!-- تسجيل الدخول (يظهر فقط إن فُعّل رمز) -->
+  <div id="loginScreen" class="login-wrap hidden">
     <div class="panel login-box">
       <div class="brand center" style="justify-content:center;"><span class="dot"></span> شاشة المقدّم</div>
       <p class="muted center">أدخل رمز المقدّم للدخول</p>
@@ -32,29 +32,40 @@
         <span class="cb-timer mono" id="cbTimer"></span>
       </div>
       <div class="cb-actions">
-        <button id="btnStart" class="btn btn-buy btn-sm">▶ بدء</button>
-        <button id="btnPause" class="btn btn-sm">⏸ إيقاف</button>
-        <button id="btnResume" class="btn btn-sm">▶ استئناف</button>
-        <button id="btnReveal" class="btn btn-sm">👁 كشف الإجابة</button>
-        <button id="btnNext" class="btn btn-primary btn-sm">⏩ السؤال التالي</button>
+        <button id="btnStart" class="btn btn-buy">▶ ابدأ اللعبة</button>
+        <button id="btnReveal" class="btn btn-accent">👁 اكشف الإجابة</button>
+        <button id="btnNext" class="btn btn-primary">⏩ التالي</button>
         <button id="btnFinish" class="btn btn-sm">🏁 إنهاء</button>
-        <button id="btnReset" class="btn btn-ghost btn-sm">🗑 إعادة تعيين</button>
+        <button id="btnReset" class="btn btn-ghost btn-sm">🗑 جديدة</button>
       </div>
     </div>
 
     <!-- التبويبات -->
     <div class="tabs">
-      <button class="tab active" data-tab="live">🎬 المباشر</button>
+      <button class="tab active" data-tab="live">🎬 اللعب</button>
       <button class="tab" data-tab="questions">❓ الأسئلة</button>
-      <button class="tab" data-tab="groups">👥 المجموعات</button>
       <button class="tab" data-tab="setup">⚙️ الإعداد</button>
-      <button class="tab" data-tab="links">🔗 الروابط</button>
     </div>
 
     <div class="tab-body">
-      <!-- المباشر -->
+      <!-- اللعب -->
       <section id="tab-live" class="tab-pane active">
-        <div id="liveEmpty" class="panel panel-pad"><p class="muted">لا توجد مسابقة — أنشئ واحدة من تبويب «الإعداد».</p></div>
+        <!-- لوحة الانضمام (قبل البدء) -->
+        <div id="joinPanel" class="panel panel-pad join-panel hidden">
+          <div class="join-left">
+            <h2>👋 انضمّوا الآن</h2>
+            <p class="muted">اطلب من كل مجموعة أن تصوّر الرمز بكاميرا الجوال، تكتب اسمها، وتدخل.</p>
+            <div class="join-url-box">افتح: <b id="joinUrl">/player</b></div>
+            <div class="join-count"><span id="joinCount">0</span> مجموعة منضمّة</div>
+            <div id="joinGroups" class="join-groups"></div>
+            <p class="muted" style="margin-top:12px;">جاهز؟ اضغط <b>«ابدأ اللعبة»</b> بالأعلى.</p>
+          </div>
+          <div class="join-right">
+            <img id="joinQr" class="join-qr" alt="QR للانضمام" />
+          </div>
+        </div>
+
+        <!-- بطاقة السؤال الحالي -->
         <div id="liveCard" class="panel panel-pad hidden">
           <div class="live-head">
             <span class="q-cat" id="liveCat"></span>
@@ -64,8 +75,12 @@
           <div id="liveOpts" class="live-opts"></div>
           <p class="muted" id="liveHint" style="margin-top:14px;"></p>
         </div>
-        <div class="panel panel-pad" style="margin-top:14px;">
-          <h3>الترتيب المباشر</h3>
+
+        <div id="liveEmpty" class="panel panel-pad hidden"><p class="muted">لا توجد مسابقة — أنشئ واحدة من تبويب «الإعداد».</p></div>
+
+        <!-- الترتيب المباشر -->
+        <div class="panel panel-pad" id="boardPanel" style="margin-top:14px;">
+          <h3>🏆 الترتيب المباشر <span class="muted" id="groupCount"></span></h3>
           <div id="liveBoard" class="live-board"></div>
         </div>
       </section>
@@ -74,45 +89,32 @@
       <section id="tab-questions" class="tab-pane">
         <div class="panel panel-pad">
           <div class="pane-head">
-            <h3>بنك الأسئلة <span class="muted" id="qCount"></span></h3>
+            <h3>الأسئلة <span class="muted" id="qCount"></span></h3>
             <button id="btnAddQuestion" class="btn btn-sm btn-primary">➕ إضافة سؤال</button>
           </div>
           <div id="questionList" class="question-list"></div>
         </div>
       </section>
 
-      <!-- المجموعات -->
-      <section id="tab-groups" class="tab-pane">
-        <div class="panel panel-pad">
-          <div class="pane-head">
-            <h3>المجموعات <span class="muted" id="groupCount"></span></h3>
-            <button id="btnAddGroup" class="btn btn-sm btn-primary">➕ إضافة مجموعة</button>
-          </div>
-          <p class="muted" style="margin-top:0;">يمكنك إضافة مجموعة جديدة في أي وقت — حتى أثناء اللعب — وستنضم فورًا بنقاط صفر.</p>
-          <div id="groupTable" class="group-table"></div>
-        </div>
-      </section>
-
       <!-- الإعداد -->
       <section id="tab-setup" class="tab-pane">
         <div class="panel panel-pad">
-          <h3>إعدادات المسابقة</h3>
+          <h3>إنشاء مسابقة</h3>
           <div class="grid2">
             <div class="field"><label>اسم المسابقة</label><input id="setName" /></div>
-            <div class="field"><label>مدة السؤال الافتراضية (ثانية)</label><input id="setTime" type="number" min="5" max="300" value="20" /></div>
-            <div class="field"><label>نقاط السؤال الافتراضية</label><input id="setPoints" type="number" min="0" value="1000" /></div>
-            <div class="field"><label>عدد المجموعات (عند الإنشاء)</label><input id="setGroups" type="number" min="1" value="4" /></div>
+            <div class="field"><label>مدة السؤال (ثانية)</label><input id="setTime" type="number" min="5" max="300" value="20" /></div>
+            <div class="field"><label>نقاط السؤال</label><input id="setPoints" type="number" min="0" value="1000" /></div>
             <div class="field">
               <label>مكافأة السرعة</label>
               <select id="setSpeed">
                 <option value="1">مفعّلة (الأسرع نقاطًا أكثر)</option>
-                <option value="0">معطّلة (نقاط ثابتة للصحيح)</option>
+                <option value="0">معطّلة (نقاط ثابتة)</option>
               </select>
             </div>
             <div class="field">
-              <label>بنك الأسئلة الابتدائي</label>
+              <label>الأسئلة</label>
               <select id="setSeed">
-                <option value="1">تحميل أسئلة جاهزة</option>
+                <option value="1">ابدأ بأسئلة جاهزة</option>
                 <option value="0">ابدأ فارغًا (أضف أسئلتك)</option>
               </select>
             </div>
@@ -123,37 +125,20 @@
           </div>
           <p class="muted" id="setupHint" style="margin-top:10px;"></p>
         </div>
-      </section>
 
-      <!-- الروابط -->
-      <section id="tab-links" class="tab-pane">
-        <div class="panel panel-pad">
-          <h3>الروابط والرابط الأساسي</h3>
-          <div class="field">
-            <label>الرابط الأساسي (Base URL) — يُكتشف تلقائيًا، عدّله عند الحاجة (مثلاً للاستضافة السحابية)</label>
-            <div style="display:flex; gap:8px;">
-              <input id="baseUrlInput" placeholder="http://192.168.1.10:3000" />
-              <button id="btnSaveBase" class="btn btn-primary btn-sm">حفظ</button>
-            </div>
+        <div class="panel panel-pad" style="margin-top:14px;">
+          <h3>الرابط الأساسي</h3>
+          <p class="muted" style="margin-top:0;">يُكتشف تلقائيًا. عدّله فقط لو رموز QR لا تعمل من أجهزة المشاركين.</p>
+          <div style="display:flex; gap:8px;">
+            <input id="baseUrlInput" placeholder="http://192.168.1.10:3000" />
+            <button id="btnSaveBase" class="btn btn-primary btn-sm">حفظ</button>
           </div>
-          <div class="quick-links">
-            <div>شاشة العرض: <a href="/display" target="_blank">/display</a></div>
-            <div>جوال المجموعة: <a href="/player" target="_blank">/player</a></div>
+          <div class="quick-links" style="margin-top:12px;">
+            <div>📺 شاشة العرض: <a href="/display" target="_blank">/display</a></div>
+            <div>📱 صفحة الانضمام: <a href="/player" target="_blank">/player</a></div>
           </div>
-          <p class="muted">أكواد وQR كل مجموعة موجودة في تبويب «المجموعات».</p>
         </div>
       </section>
-    </div>
-  </div>
-
-  <!-- نافذة QR -->
-  <div id="qrModal" class="overlay hidden">
-    <div class="panel qr-box">
-      <button id="qrClose" class="qr-close">✕</button>
-      <h3 id="qrTitle" class="center">—</h3>
-      <div class="center"><img id="qrImg" alt="QR" width="280" height="280" /></div>
-      <div class="qr-code mono center" id="qrCode">—</div>
-      <div class="qr-url center muted" id="qrUrl"></div>
     </div>
   </div>
 

@@ -195,11 +195,7 @@ function attachSockets(io, engine) {
 
     // إدارة المجموعات (يمكن الإضافة في أي وقت حتى أثناء اللعب)
     socket.on('admin:group:add', guard((f) => {
-      const c = engine.requireComp();
-      const codes = new Set(c.groups.map((g) => g.code));
-      const g = Competition.makeGroup(f.name || `المجموعة ${c.groups.length + 1}`, codes);
-      c.groups.push(g);
-      engine.emit('state');
+      const g = engine.addGroup(f.name || '');
       return { id: g.id, code: g.code };
     }));
     socket.on('admin:group:update', guard((f) => {

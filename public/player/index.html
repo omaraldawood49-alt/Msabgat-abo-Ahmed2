@@ -11,7 +11,8 @@
     /* شاشة الدخول */
     .join { max-width: 380px; margin: 60px auto; padding: 28px 24px; text-align: center; }
     .join h1 { font-size: 24px; }
-    .code-input { text-align: center; letter-spacing: 8px; font-size: 26px; font-weight: 800; text-transform: uppercase; }
+    .join-emoji { font-size: 46px; margin: 6px 0; }
+    .name-input { text-align: center; font-size: 22px; font-weight: 800; }
     /* رأس ثابت */
     .phead { position: sticky; top: 0; z-index: 20; background: var(--fest); color: #fff; padding: 12px 14px; box-shadow: 0 6px 18px rgba(80,60,180,.22); }
     .phead-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
@@ -65,12 +66,13 @@
   <div id="joinScreen">
     <div class="panel join">
       <div class="brand center" style="justify-content:center; margin-bottom:6px;"><span class="dot"></span> مسابقة الأسئلة</div>
-      <h1>دخول المجموعة</h1>
-      <p class="muted" style="margin-top:-6px;">أدخل كود المجموعة أو امسح رمز QR</p>
+      <div class="join-emoji">🙌</div>
+      <h1>اكتب اسم مجموعتك</h1>
+      <p class="muted" style="margin-top:-6px;">ثم اضغط «دخول» وانتظر بدء المقدّم</p>
       <div class="field" style="margin-top:18px;">
-        <input id="codeInput" class="code-input" maxlength="6" placeholder="• • • •" autocomplete="off" />
+        <input id="nameInput" class="name-input" maxlength="24" placeholder="مثال: النمور 🐯" autocomplete="off" />
       </div>
-      <button id="joinBtn" class="btn btn-accent btn-block">دخول</button>
+      <button id="joinBtn" class="btn btn-accent btn-block" style="font-size:18px; padding:14px;">🚀 دخول</button>
       <p id="joinErr" class="down" style="min-height:18px; margin-top:12px; font-size:14px;"></p>
     </div>
   </div>

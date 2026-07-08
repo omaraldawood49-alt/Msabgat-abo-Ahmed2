@@ -10,11 +10,11 @@
 
   var joinScreen = document.getElementById('joinScreen');
   var gameScreen = document.getElementById('gameScreen');
-  var codeInput = document.getElementById('codeInput');
+  var nameInput = document.getElementById('nameInput');
   var joinBtn = document.getElementById('joinBtn');
   var joinErr = document.getElementById('joinErr');
 
-  // ---------- الدخول ----------
+  // ---------- الاتصال بكود مجموعة (بعد الانضمام أو عند العودة) ----------
   function connect(code) {
     Sound.unlock();
     socket = io({ auth: { role: 'player', code: code } });
@@ -23,11 +23,16 @@
       try { localStorage.setItem('quiz_code', code); } catch (e) {}
       joinScreen.classList.add('hidden');
       gameScreen.classList.remove('hidden');
+      joinBtn.disabled = false;
     });
     socket.on('auth:error', function (e) {
-      joinErr.textContent = e.error || 'تعذّر الدخول';
-      joinBtn.disabled = false;
+      // الكود لم يعد صالحًا (أُعيد تعيين المسابقة مثلاً) — نعود لشاشة الاسم
       try { localStorage.removeItem('quiz_code'); } catch (er) {}
+      if (socket) { socket.disconnect(); socket = null; }
+      joinScreen.classList.remove('hidden');
+      gameScreen.classList.add('hidden');
+      joinErr.textContent = e.error || 'انتهت الجلسة — أعد الدخول';
+      joinBtn.disabled = false;
     });
     socket.on('state', render);
     socket.on('tick', function (t) {
@@ -42,22 +47,40 @@
     socket.on('disconnect', function () { });
   }
 
+  // ---------- الانضمام الذاتي بالاسم ----------
   function doJoin() {
-    var code = (codeInput.value || '').trim().toUpperCase();
-    if (code.length < 3) { joinErr.textContent = 'أدخل كودًا صحيحًا'; return; }
+    var name = (nameInput.value || '').trim();
+    if (name.length < 1) { joinErr.textContent = 'اكتب اسم مجموعتك'; return; }
     joinErr.textContent = '';
     joinBtn.disabled = true;
-    connect(code);
+    Sound.unlock();
+    fetch('/api/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name })
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      if (res && res.ok) {
+        try { localStorage.setItem('quiz_name', name); } catch (e) {}
+        connect(res.code);
+      } else {
+        joinErr.textContent = (res && res.error) || 'تعذّر الانضمام';
+        joinBtn.disabled = false;
+      }
+    }).catch(function () {
+      joinErr.textContent = 'تعذّر الاتصال بالخادم';
+      joinBtn.disabled = false;
+    });
   }
   joinBtn.addEventListener('click', doJoin);
-  codeInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+  nameInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
 
-  // كود من الرابط (QR) أو من الجلسة السابقة
-  var urlCode = U.qs('code');
+  // عند العودة/تحديث الصفحة: إن كان لدينا كود محفوظ نعيد الاتصال مباشرة
   var savedCode = null;
   try { savedCode = localStorage.getItem('quiz_code'); } catch (e) {}
-  var initCode = urlCode || savedCode;
-  if (initCode) { codeInput.value = initCode.toUpperCase(); connect(initCode.trim().toUpperCase()); }
+  var savedName = '';
+  try { savedName = localStorage.getItem('quiz_name') || ''; } catch (e) {}
+  if (savedName) nameInput.value = savedName;
+  if (savedCode) { connect(savedCode); }
 
   // ---------- زر الصوت ----------
   var soundBtn = document.getElementById('soundBtn');

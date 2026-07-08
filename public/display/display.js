@@ -95,9 +95,14 @@
   }
 
   // ---------- الردهة ----------
+  var qrLoaded = false;
   function renderLobby(s) {
-    document.getElementById('lobbyTitle').textContent = 'بانتظار بدء المسابقة';
+    document.getElementById('lobbyTitle').textContent = 'امسح الرمز وانضم!';
     document.getElementById('lobbyCount').textContent = s.groupCount || 0;
+    if (!qrLoaded) {
+      document.getElementById('joinQr').src = '/api/join-qr.png?t=' + Date.now();
+      qrLoaded = true;
+    }
     fetch('/api/config').then(function (r) { return r.json(); }).then(function (c) {
       document.getElementById('joinUrl').textContent = (c.baseUrl || '') + '/player';
     }).catch(function () {});

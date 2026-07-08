@@ -103,6 +103,8 @@ class GameEngine extends EventEmitter {
         this.emit('tick', { timeLeft: comp.timeLeft });
       }
     }, 1000);
+    // لا يمنع المؤقّت خروج العملية (السيرفر يُبقيها حيّة في الإنتاج؛ ويسمح للاختبارات بالخروج)
+    if (typeof this._tickTimer.unref === 'function') this._tickTimer.unref();
   }
 
   pause() {
@@ -219,6 +221,19 @@ class GameEngine extends EventEmitter {
     this.emit('answer', { groupId });
     this.emit('state');
     return { ok: true };
+  }
+
+  // -------------------- إضافة مجموعة (انضمام ذاتي بالاسم) --------------------
+
+  /** ينشئ مجموعة جديدة باسمٍ مُعطى (يستخدمه الانضمام الذاتي من الجوال). */
+  addGroup(name) {
+    const comp = this.requireComp();
+    const codes = new Set(comp.groups.map((g) => g.code));
+    const clean = String(name || '').trim().slice(0, 24);
+    const g = Competition.makeGroup(clean || `المجموعة ${comp.groups.length + 1}`, codes);
+    comp.groups.push(g);
+    this.emit('state');
+    return g;
   }
 
   // -------------------- تعديلات المقدّم على النقاط --------------------

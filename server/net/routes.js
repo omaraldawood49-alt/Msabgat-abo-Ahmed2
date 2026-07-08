@@ -34,6 +34,35 @@ function createRouter(engine) {
     });
   });
 
+  // انضمام ذاتي: المشترك يكتب اسم مجموعته فتُنشأ له مجموعة ويُعاد كودها
+  router.post('/api/join', (req, res) => {
+    if (!engine.comp) return res.status(404).json({ ok: false, error: 'لا توجد مسابقة نشطة بعد — انتظر المقدّم' });
+    try {
+      const group = engine.addGroup((req.body && req.body.name) || '');
+      res.json({ ok: true, code: group.code, groupId: group.id, name: group.name });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // رمز QR موحّد للانضمام (يفتح صفحة كتابة اسم المجموعة)
+  router.get('/api/join-qr.png', async (req, res) => {
+    try {
+      const url = `${resolveBase(engine, req)}/player`;
+      const png = await QRCode.toBuffer(url, {
+        type: 'png',
+        width: 360,
+        margin: 1,
+        color: { dark: '#0b1220', light: '#ffffff' },
+      });
+      res.set('Content-Type', 'image/png');
+      res.set('Cache-Control', 'no-store');
+      res.send(png);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // التحقق من صحة كود مجموعة (تستخدمه صفحة المتسابق قبل الاتصال)
   router.get('/api/group/:code', (req, res) => {
     if (!engine.comp) return res.status(404).json({ ok: false, error: 'لا توجد منافسة نشطة' });

@@ -32,6 +32,18 @@
 .pane-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .q-cat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 700; color: var(--text-dim); }
 
+/* ---------- لوحة الانضمام ---------- */
+.join-panel { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+.join-left { flex: 1; min-width: 240px; }
+.join-left h2 { font-size: 26px; }
+.join-url-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin: 10px 0; font-size: 15px; word-break: break-all; }
+.join-count { font-size: 18px; font-weight: 800; color: var(--accent-2); }
+.join-groups { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.join-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-weight: 700; }
+.chip-x { background: transparent; border: none; color: var(--down); cursor: pointer; font-size: 13px; padding: 0; }
+.join-right { flex: 0 0 auto; }
+.join-qr { width: 220px; height: 220px; background: #fff; border-radius: 14px; padding: 10px; display: block; box-shadow: var(--shadow); }
+
 /* ---------- تبويب المباشر ---------- */
 .live-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .live-q { font-size: 24px; margin: 12px 0 16px; }
@@ -50,6 +62,7 @@
 .lb-row .lb-rank { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--bg); border: 1px solid var(--border); }
 .lb-row .lb-name { flex: 1; }
 .lb-row .lb-score { font-weight: 800; color: var(--accent-2); }
+.lb-row .lb-del { color: var(--down); padding: 4px 8px; }
 .lb-row.rank-1 .lb-rank { border-color: var(--gold); color: var(--gold); }
 .lb-row.rank-2 .lb-rank { border-color: var(--silver); color: var(--silver); }
 .lb-row.rank-3 .lb-rank { border-color: var(--bronze); color: var(--bronze); }

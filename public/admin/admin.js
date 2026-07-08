@@ -6,14 +6,15 @@
   var socket = null;
   var state = null;
   var lastCompId = null;
+  var qrLoaded = false;
 
-  // ---------- تسجيل الدخول ----------
   var loginScreen = document.getElementById('loginScreen');
   var dashboard = document.getElementById('dashboard');
   var pinInput = document.getElementById('pinInput');
   var loginBtn = document.getElementById('loginBtn');
   var loginErr = document.getElementById('loginErr');
 
+  // ---------- تسجيل الدخول ----------
   function login(allowEmpty) {
     var pin = pinInput.value;
     if (!pin && !allowEmpty) { loginErr.textContent = 'أدخل الرمز'; return; }
@@ -26,6 +27,7 @@
       loadConfig();
     });
     socket.on('auth:error', function (e) {
+      loginScreen.classList.remove('hidden');
       loginErr.textContent = e.error || 'رمز غير صحيح';
       loginBtn.disabled = false;
       if (socket) socket.disconnect();
@@ -35,16 +37,15 @@
       if (state) { state.timeLeft = t.timeLeft; document.getElementById('cbTimer').textContent = state.questionState === 'open' ? '⏱ ' + t.timeLeft : ''; }
     });
   }
-  loginBtn.addEventListener('click', login);
-  pinInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') login(); });
+  loginBtn.addEventListener('click', function () { login(false); });
+  pinInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') login(false); });
 
-  // إن لم يكن هناك رمز مطلوب، ندخل مباشرة بلا شاشة تسجيل دخول
+  // إن لم يكن هناك رمز مطلوب، ندخل مباشرة
   fetch('/api/config').then(function (r) { return r.json(); }).then(function (c) {
     if (!c || !c.requiresPin) { pinInput.value = ''; login(true); return; }
-    try { var saved = sessionStorage.getItem('quiz_pin'); if (saved) { pinInput.value = saved; login(); } } catch (e) {}
-  }).catch(function () {
-    try { var s = sessionStorage.getItem('quiz_pin'); if (s) { pinInput.value = s; login(); } } catch (e) {}
-  });
+    loginScreen.classList.remove('hidden');
+    try { var saved = sessionStorage.getItem('quiz_pin'); if (saved) { pinInput.value = saved; login(false); } } catch (e) {}
+  }).catch(function () { loginScreen.classList.remove('hidden'); });
 
   // ---------- مساعد الإرسال ----------
   function send(event, payload) {
@@ -68,18 +69,16 @@
 
   // ---------- أزرار التحكم ----------
   document.getElementById('btnStart').onclick = function () { send('admin:start'); };
-  document.getElementById('btnPause').onclick = function () { send('admin:pause'); };
-  document.getElementById('btnResume').onclick = function () { send('admin:resume'); };
   document.getElementById('btnReveal').onclick = function () { send('admin:reveal'); };
   document.getElementById('btnNext').onclick = function () { send('admin:next'); };
   document.getElementById('btnFinish').onclick = function () { if (confirm('إنهاء المسابقة الآن؟')) send('admin:finish'); };
-  document.getElementById('btnReset').onclick = function () { if (confirm('حذف المسابقة الحالية وإعادة التعيين؟')) send('admin:reset'); };
+  document.getElementById('btnReset').onclick = function () { if (confirm('بدء مسابقة جديدة وحذف الحالية؟')) send('admin:reset'); };
 
   // ---------- الإعداد ----------
   document.getElementById('btnCreate').onclick = function () {
     var opts = readSetup();
     if (state && state.active && !confirm('سيؤدي هذا لإنشاء مسابقة جديدة واستبدال الحالية. متابعة؟')) return;
-    send('admin:create', opts);
+    send('admin:create', opts).then(function () { U.toast('تم إنشاء المسابقة', 'ok'); });
   };
   document.getElementById('btnSaveSettings').onclick = function () {
     send('admin:updateSettings', readSetup()).then(function () { U.toast('تم حفظ الإعدادات', 'ok'); });
@@ -89,9 +88,9 @@
       name: document.getElementById('setName').value || 'مسابقة الأسئلة',
       defaultTimeSec: parseInt(document.getElementById('setTime').value, 10) || 20,
       defaultPoints: parseInt(document.getElementById('setPoints').value, 10) || 1000,
-      groupCount: parseInt(document.getElementById('setGroups').value, 10) || 4,
       speedBonus: document.getElementById('setSpeed').value === '1',
       useSeed: document.getElementById('setSeed').value === '1',
+      groupCount: 0,
     };
   }
   function fillSetup(s) {
@@ -104,35 +103,17 @@
   // ---------- الأسئلة ----------
   document.getElementById('btnAddQuestion').onclick = function () { openQEdit(null); };
 
-  // ---------- المجموعات ----------
-  document.getElementById('btnAddGroup').onclick = function () {
-    send('admin:group:add', {}).then(function (d) { if (d) U.toast('أُضيفت مجموعة جديدة', 'ok'); });
-  };
-
-  // ---------- الروابط ----------
+  // ---------- الرابط الأساسي ----------
   document.getElementById('btnSaveBase').onclick = function () {
     send('admin:setBaseUrl', { baseUrl: document.getElementById('baseUrlInput').value }).then(function () {
-      U.toast('تم حفظ الرابط الأساسي', 'ok');
+      qrLoaded = false; U.toast('تم حفظ الرابط الأساسي', 'ok');
     });
   };
   function loadConfig() {
     fetch('/api/config').then(function (r) { return r.json(); }).then(function (c) {
       if (!document.getElementById('baseUrlInput').value) document.getElementById('baseUrlInput').value = c.baseUrl || '';
+      document.getElementById('joinUrl').textContent = (c.baseUrl || '') + '/player';
     }).catch(function () {});
-  }
-
-  // ---------- نافذة QR ----------
-  var qrModal = document.getElementById('qrModal');
-  document.getElementById('qrClose').onclick = function () { qrModal.classList.add('hidden'); };
-  qrModal.addEventListener('click', function (e) { if (e.target === qrModal) qrModal.classList.add('hidden'); });
-  function showQR(group) {
-    document.getElementById('qrTitle').textContent = group.name;
-    document.getElementById('qrCode').textContent = group.code;
-    document.getElementById('qrImg').src = '/api/qr/' + group.code + '.png?t=' + Date.now();
-    fetch('/api/join-url/' + group.code).then(function (r) { return r.json(); }).then(function (d) {
-      document.getElementById('qrUrl').textContent = d.url;
-    });
-    qrModal.classList.remove('hidden');
   }
 
   // ---------- نافذة تحرير سؤال ----------
@@ -176,7 +157,6 @@
     var options = Array.prototype.map.call(optInputs, function (i) { return i.value; });
     var checked = document.querySelector('#qeOptions input[name="qeCorrect"]:checked');
     var correctIndex = checked ? parseInt(checked.value, 10) : 0;
-    // تأكد أن الخيار الصحيح غير فارغ
     if (!options[correctIndex] || !options[correctIndex].trim()) {
       U.toast('الخيار الصحيح لا يمكن أن يكون فارغًا', 'err'); return;
     }
@@ -203,8 +183,8 @@
     var badge = document.getElementById('statusBadge');
     badge.textContent = !active ? 'لا توجد مسابقة'
       : state.status === 'finished' ? 'انتهت'
-      : state.currentIndex < 0 ? 'جاهزة للبدء'
-      : state.questionState === 'open' ? (state.paused ? 'متوقفة مؤقتًا' : 'الإجابة مفتوحة')
+      : state.currentIndex < 0 ? 'بانتظار الانضمام'
+      : state.questionState === 'open' ? 'الإجابة مفتوحة'
       : state.questionState === 'revealed' ? 'كُشفت الإجابة' : '—';
     document.getElementById('cbNum').textContent = active && state.currentIndex >= 0 ? state.questionNumber : 0;
     document.getElementById('cbTotal').textContent = active ? ' / ' + state.total : '';
@@ -212,24 +192,37 @@
 
     updateControlButtons();
 
+    var joinPanel = document.getElementById('joinPanel');
+    var liveCard = document.getElementById('liveCard');
+    var liveEmpty = document.getElementById('liveEmpty');
+    var boardPanel = document.getElementById('boardPanel');
+
     if (!active) {
-      document.getElementById('liveEmpty').classList.remove('hidden');
-      document.getElementById('liveCard').classList.add('hidden');
-      document.getElementById('liveBoard').innerHTML = '<p class="muted">أنشئ مسابقة أولًا.</p>';
+      joinPanel.classList.add('hidden'); liveCard.classList.add('hidden'); boardPanel.classList.add('hidden');
+      liveEmpty.classList.remove('hidden');
       document.getElementById('questionList').innerHTML = '<p class="muted">أنشئ مسابقة أولًا.</p>';
-      document.getElementById('groupTable').innerHTML = '<p class="muted">أنشئ مسابقة أولًا.</p>';
       document.getElementById('setupHint').textContent = 'لا توجد مسابقة — اضبط الإعدادات ثم اضغط «إنشاء مسابقة جديدة».';
       return;
     }
+    liveEmpty.classList.add('hidden');
+    boardPanel.classList.remove('hidden');
 
     if (state.id !== lastCompId) { lastCompId = state.id; fillSetup(state); }
     document.getElementById('setupHint').textContent = state.currentIndex >= 0
-      ? 'المسابقة قيد التشغيل. يمكنك إضافة أسئلة ومجموعات في أي وقت.'
-      : 'جاهزة — عدّل الأسئلة والمجموعات ثم اضغط «بدء».';
+      ? 'المسابقة قيد التشغيل.'
+      : 'جاهزة — انتظر انضمام المجموعات ثم اضغط «ابدأ اللعبة».';
 
-    renderLive();
+    // قبل البدء: لوحة الانضمام. بعد البدء/الانتهاء: بطاقة السؤال.
+    var lobby = state.currentIndex < 0 && state.status !== 'finished';
+    if (lobby) {
+      joinPanel.classList.remove('hidden'); liveCard.classList.add('hidden');
+      renderJoin();
+    } else {
+      joinPanel.classList.add('hidden');
+      renderLive();
+    }
     renderQuestions();
-    renderGroups();
+    renderBoard();
   }
 
   function updateControlButtons() {
@@ -243,59 +236,70 @@
       b.style.display = show ? '' : 'none';
       b.disabled = !!dis;
     }
-    set('btnStart', !a || notStarted || (open && state.paused), !a);
-    set('btnPause', open && !state.paused);
-    set('btnResume', open && state.paused);
-    set('btnReveal', open);
-    set('btnNext', revealed);
-    set('btnFinish', a && !finished && state.currentIndex >= 0);
-    set('btnReset', true, false);
+    set('btnStart', notStarted, false);
+    set('btnReveal', open, false);
+    set('btnNext', revealed, false);
+    set('btnFinish', a && !finished && state.currentIndex >= 0, false);
+    set('btnReset', a, false);
   }
 
-  // تبويب المباشر
+  // لوحة الانضمام
+  function renderJoin() {
+    document.getElementById('joinCount').textContent = state.groups ? state.groups.length : 0;
+    if (!qrLoaded) { document.getElementById('joinQr').src = '/api/join-qr.png?t=' + Date.now(); qrLoaded = true; }
+    var wrap = document.getElementById('joinGroups');
+    wrap.innerHTML = '';
+    (state.groups || []).forEach(function (g) {
+      wrap.appendChild(el('span', { class: 'join-chip' }, [
+        g.name,
+        el('button', { class: 'chip-x', text: '✕', title: 'حذف', onclick: function () { send('admin:group:remove', { id: g.id }); } })
+      ]));
+    });
+    if (!state.groups || !state.groups.length) wrap.innerHTML = '<span class="muted">لم تنضم أي مجموعة بعد...</span>';
+  }
+
+  // بطاقة السؤال
   function renderLive() {
-    var empty = document.getElementById('liveEmpty');
     var card = document.getElementById('liveCard');
     var cur = state.current;
-    if (!cur) {
-      empty.classList.remove('hidden'); card.classList.add('hidden');
-      empty.querySelector('p').textContent = state.currentIndex < 0
-        ? 'المسابقة جاهزة — اضغط «بدء» لعرض السؤال الأول.'
-        : 'انتهت المسابقة.';
-    } else {
-      empty.classList.add('hidden'); card.classList.remove('hidden');
-      document.getElementById('liveCat').textContent = cur.category || 'سؤال';
-      document.getElementById('liveAnswered').textContent = 'أجاب ' + cur.answered + ' من ' + cur.total;
-      document.getElementById('liveText').textContent = cur.text;
-      var revealed = state.questionState === 'revealed';
-      var optsWrap = document.getElementById('liveOpts');
-      optsWrap.innerHTML = '';
-      cur.options.forEach(function (o, i) {
-        var isCorrect = i === cur.correctIndex;
-        optsWrap.appendChild(el('div', { class: 'live-opt opt-' + i + ((revealed && isCorrect) ? ' correct' : '') }, [
-          el('span', { class: 'shape' }, [SHAPES[i] || '●']),
-          el('span', { class: 'otext' }, [o + (isCorrect ? '  ✓' : '')]),
-          el('span', { class: 'cnt mono' }, [String(cur.tally[i] || 0)])
-        ]));
-      });
-      document.getElementById('liveHint').textContent = state.questionState === 'open'
-        ? 'الإجابة مفتوحة — اضغط «كشف الإجابة» أو انتظر انتهاء الوقت.'
-        : revealed ? 'كُشفت الإجابة الصحيحة (المحدّدة بعلامة ✓). اضغط «السؤال التالي».' : '';
-    }
+    if (!cur) { card.classList.add('hidden'); return; }
+    card.classList.remove('hidden');
+    document.getElementById('liveCat').textContent = cur.category || 'سؤال';
+    document.getElementById('liveAnswered').textContent = 'أجاب ' + cur.answered + ' من ' + cur.total;
+    document.getElementById('liveText').textContent = cur.text;
+    var revealed = state.questionState === 'revealed';
+    var optsWrap = document.getElementById('liveOpts');
+    optsWrap.innerHTML = '';
+    cur.options.forEach(function (o, i) {
+      var isCorrect = i === cur.correctIndex;
+      optsWrap.appendChild(el('div', { class: 'live-opt opt-' + i + ((revealed && isCorrect) ? ' correct' : '') }, [
+        el('span', { class: 'shape' }, [SHAPES[i] || '●']),
+        el('span', { class: 'otext' }, [o + (isCorrect ? '  ✓' : '')]),
+        el('span', { class: 'cnt mono' }, [String(cur.tally[i] || 0)])
+      ]));
+    });
+    document.getElementById('liveHint').textContent = state.questionState === 'open'
+      ? 'الإجابة مفتوحة — اضغط «اكشف الإجابة» أو انتظر انتهاء الوقت.'
+      : revealed ? 'الإجابة الصحيحة محدّدة بعلامة ✓. اضغط «التالي».'
+      : state.status === 'finished' ? 'انتهت المسابقة.' : '';
+  }
 
+  function renderBoard() {
+    document.getElementById('groupCount').textContent = '(' + (state.groups ? state.groups.length : 0) + ')';
     var board = document.getElementById('liveBoard');
     board.innerHTML = '';
     (state.groups || []).forEach(function (g) {
       board.appendChild(el('div', { class: 'lb-row rank-' + g.rank }, [
         el('span', { class: 'lb-rank' }, ['#' + g.rank]),
         el('span', { class: 'lb-name' }, [g.name]),
-        el('span', { class: 'lb-score mono' }, [fmt(g.score) + ' نقطة'])
+        el('span', { class: 'lb-score mono' }, [fmt(g.score) + ' نقطة']),
+        el('button', { class: 'btn btn-sm btn-ghost lb-del', text: '✕', title: 'حذف', onclick: function () { if (confirm('حذف «' + g.name + '»؟')) send('admin:group:remove', { id: g.id }); } })
       ]));
     });
     if (!state.groups || !state.groups.length) board.innerHTML = '<p class="muted">لا توجد مجموعات بعد.</p>';
   }
 
-  // بنك الأسئلة
+  // الأسئلة
   function renderQuestions() {
     var wrap = document.getElementById('questionList');
     document.getElementById('qCount').textContent = '(' + state.questions.length + ')';
@@ -323,53 +327,10 @@
         el('div', { class: 'qrow-meta' }, [
           q.category ? el('span', { class: 'chip' }, [q.category]) : null,
           el('span', { class: 'chip' }, ['⏱ ' + q.timeLimitSec + 'ث']),
-          el('span', { class: 'chip' }, ['⭐ ' + fmt(q.points) + ' نقطة']),
-          el('span', { class: 'chip' }, [q.options.length + ' خيارات'])
+          el('span', { class: 'chip' }, ['⭐ ' + fmt(q.points) + ' نقطة'])
         ])
       ]);
       wrap.appendChild(row);
     });
-  }
-
-  // المجموعات
-  function renderGroups() {
-    var wrap = document.getElementById('groupTable');
-    if (isEditingWithin(wrap)) return;
-    document.getElementById('groupCount').textContent = '(' + state.groups.length + ')';
-    wrap.innerHTML = '';
-    if (!state.groups.length) { wrap.innerHTML = '<p class="muted">لا توجد مجموعات — أضِف مجموعة.</p>'; return; }
-    state.groups.forEach(function (g) {
-      var nameIn = el('input', { value: g.name, style: 'max-width:200px;' });
-      nameIn.addEventListener('change', function () { send('admin:group:update', { id: g.id, name: nameIn.value }); });
-      var rankCls = g.rank <= 3 ? ' rank-' + g.rank : '';
-      var amountIn = el('input', { type: 'number', placeholder: 'نقاط', style: 'max-width:110px;' });
-      var card = el('div', { class: 'gcard' }, [
-        el('div', { class: 'gcard-top' }, [
-          el('div', { class: 'gcard-name' }, [ el('span', { class: 'rank-pill' + rankCls }, ['#' + g.rank]), nameIn ]),
-          el('div', { style: 'display:flex; gap:8px; align-items:center;' }, [
-            el('span', { class: 'gscore mono' }, [fmt(g.score)]),
-            el('span', { class: 'gcode' }, [g.code]),
-            el('button', { class: 'btn btn-sm', text: '📱 QR', onclick: function () { showQR(g); } }),
-            el('button', { class: 'btn btn-sm btn-sell', text: '🗑', onclick: function () { if (confirm('حذف «' + g.name + '»؟')) send('admin:group:remove', { id: g.id }); } })
-          ])
-        ]),
-        el('div', { class: 'gcard-actions' }, [
-          amountIn,
-          el('button', { class: 'btn btn-sm btn-buy', text: '➕ منح', onclick: function () { adjust(g.id, amountIn, 1); } }),
-          el('button', { class: 'btn btn-sm btn-sell', text: '➖ خصم', onclick: function () { adjust(g.id, amountIn, -1); } })
-        ])
-      ]);
-      wrap.appendChild(card);
-    });
-  }
-  function adjust(groupId, input, sign) {
-    var amt = parseFloat(input.value);
-    if (!amt || amt <= 0) { U.toast('أدخل عدد نقاط صحيحًا', 'err'); return; }
-    send('admin:score', { groupId: groupId, amount: sign * amt }).then(function () { input.value = ''; });
-  }
-
-  function isEditingWithin(container) {
-    var a = document.activeElement;
-    return a && container.contains(a) && (a.tagName === 'INPUT' || a.tagName === 'SELECT');
   }
 })();
