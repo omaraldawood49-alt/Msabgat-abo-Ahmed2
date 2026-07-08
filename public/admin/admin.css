@@ -46,7 +46,11 @@
 
 /* ---------- تبويب المباشر ---------- */
 .live-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.live-q { font-size: 24px; margin: 12px 0 16px; }
+.live-q { font-size: 24px; margin: 12px 0 10px; }
+.live-answer { background: var(--up-bg); border: 1px solid var(--up); color: var(--up); border-radius: 10px; padding: 8px 14px; font-weight: 800; margin-bottom: 12px; }
+.live-answer .ans-label { color: var(--text-dim); font-weight: 700; }
+.live-lies { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.lie-item { background: var(--panel-2); border: 1px solid var(--border-soft); border-radius: 8px; padding: 8px 12px; font-size: 15px; }
 .live-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .live-opt {
   display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px;

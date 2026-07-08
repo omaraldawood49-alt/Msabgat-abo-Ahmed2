@@ -9,7 +9,7 @@ function uid(prefix) {
   return `${prefix}_${Date.now().toString(36)}${_seq.toString(36)}`;
 }
 
-// كود دخول قصير سهل الإدخال (بدون أحرف ملتبسة مثل O/0/I/1)
+// كود دخول قصير (احتياطي) — الانضمام الأساسي بالاسم عبر QR
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function makeCode(len = 4) {
   let s = '';
@@ -19,32 +19,27 @@ function makeCode(len = 4) {
   return s;
 }
 
-const MIN_OPTIONS = 2;
-const MAX_OPTIONS = 4;
-
-/** ينظّف خيارات سؤال ويضبط رقم الخيار الصحيح ضمن الحدود. */
-function sanitizeOptions(options, correctIndex) {
-  let opts = (Array.isArray(options) ? options : [])
-    .map((o) => String(o == null ? '' : o).trim())
-    .filter((o) => o.length > 0)
-    .slice(0, MAX_OPTIONS);
-  while (opts.length < MIN_OPTIONS) opts.push(`خيار ${opts.length + 1}`);
-  let ci = clampInt(correctIndex, 0, opts.length - 1, 0);
-  return { options: opts, correctIndex: ci };
+/** تطبيع نص للمقارنة (لكشف تطابق اللغم مع الصحيح أو دمج الألغام المتشابهة). */
+function normalize(text) {
+  return String(text == null ? '' : text)
+    .trim()
+    .toLowerCase()
+    .replace(/[ً-ْٰ]/g, '') // إزالة التشكيل
+    .replace(/\s+/g, ' ')
+    .replace(/[.،؛!?؟"'`ـ]/g, '')
+    // توحيد بعض الحروف العربية الشائعة
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه');
 }
 
 function makeQuestion(fields = {}, defaults = {}) {
-  const { options, correctIndex } = sanitizeOptions(
-    fields.options && fields.options.length ? fields.options : ['', '', '', ''],
-    fields.correctIndex
-  );
   return {
     id: uid('q'),
     text: String(fields.text || 'سؤال جديد').trim(),
-    options,
-    correctIndex,
+    answer: String(fields.answer || '').trim(),
     category: String(fields.category || '').trim(),
-    timeLimitSec: clampInt(fields.timeLimitSec, 5, 300, defaults.defaultTimeSec || 20),
+    timeLimitSec: clampInt(fields.timeLimitSec, 5, 300, defaults.defaultTimeSec || 45),
     points: clampInt(fields.points, 0, 100000, defaults.defaultPoints || 1000),
   };
 }
@@ -57,31 +52,42 @@ function makeGroup(name, existingCodes = new Set()) {
     name,
     code,
     score: 0,
-    streak: 0,
-    answers: {}, // { [questionId]: { optionIndex, atTimeLeft, correct, awarded } }
     joinedAt: Date.now(),
   };
 }
 
+/** يخلط مصفوفة (Fisher–Yates). */
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** يختار عيّنة عشوائية بحجم n من مصفوفة. */
+function sample(arr, n) {
+  return shuffle(arr).slice(0, Math.max(0, n));
+}
+
 /**
- * ينشئ مسابقة أسئلة جديدة بالإعدادات المُمرّرة.
+ * ينشئ مسابقة أسئلة جديدة (نمط اللغم).
  */
 function createCompetition(opts = {}) {
   const {
-    name = 'مسابقة الأسئلة',
-    defaultTimeSec = 20,
+    name = 'مسابقة الألغام',
+    defaultTimeSec = 45,
     defaultPoints = 1000,
     speedBonus = true,
-    groupCount = 4,
+    groupCount = 0,
     useSeed = true,
-    questionCount = SEED_QUESTIONS.length,
+    questionCount = 10,
   } = opts;
 
   const defaults = { defaultTimeSec, defaultPoints };
   const questions = useSeed
-    ? SEED_QUESTIONS.slice(0, Math.max(1, Math.min(questionCount, SEED_QUESTIONS.length))).map(
-        (q) => makeQuestion(q, defaults)
-      )
+    ? sample(SEED_QUESTIONS, clampInt(questionCount, 1, 50, 10)).map((q) => makeQuestion(q, defaults))
     : [];
 
   const codes = new Set();
@@ -95,7 +101,7 @@ function createCompetition(opts = {}) {
   return {
     id: uid('cmp'),
     name,
-    defaultTimeSec: clampInt(defaultTimeSec, 5, 300, 20),
+    defaultTimeSec: clampInt(defaultTimeSec, 5, 300, 45),
     defaultPoints: clampInt(defaultPoints, 0, 100000, 1000),
     speedBonus: speedBonus !== false,
     questions,
@@ -103,11 +109,24 @@ function createCompetition(opts = {}) {
 
     // حالة التشغيل
     status: 'setup', // setup | running | finished
-    currentIndex: -1, // -1 = لم تبدأ؛ وإلا فهرس السؤال الحالي
-    questionState: 'idle', // idle | open | revealed
+    currentIndex: -1, // -1 = لم تبدأ
+    // المراحل: idle | lies (كتابة الألغام) | pick (الاختيار) | revealed
+    questionState: 'idle',
     timeLeft: 0,
 
+    // حالة الجولة الحالية
+    round: emptyRound(),
+
     createdAt: Date.now(),
+  };
+}
+
+function emptyRound() {
+  return {
+    lies: {}, // groupId -> { text, norm }
+    options: [], // [{ id, text, kind:'truth'|'lie', owners:[groupId] }]
+    picks: {}, // groupId -> optionId
+    awarded: {}, // groupId -> نقاط هذه الجولة (للعرض بعد الكشف)
   };
 }
 
@@ -116,47 +135,58 @@ function createCompetition(opts = {}) {
 function findQuestion(comp, questionId) {
   return comp.questions.find((q) => q.id === questionId) || null;
 }
-
 function findGroup(comp, groupId) {
   return comp.groups.find((g) => g.id === groupId) || null;
 }
-
 function findGroupByCode(comp, code) {
   if (!code) return null;
   const norm = String(code).trim().toUpperCase();
   return comp.groups.find((g) => g.code === norm) || null;
 }
-
-/** السؤال الحالي (أو null إذا لم تبدأ/انتهت). */
 function currentQuestion(comp) {
   if (!comp || comp.currentIndex < 0 || comp.currentIndex >= comp.questions.length) return null;
   return comp.questions[comp.currentIndex];
 }
 
-/** توزيع عدد الإجابات على كل خيار للسؤال المُمرَّر. */
-function optionTally(comp, question) {
-  const tally = new Array(question.options.length).fill(0);
-  let answered = 0;
-  for (const g of comp.groups) {
-    const a = g.answers[question.id];
-    if (a && a.optionIndex != null && a.optionIndex >= 0 && a.optionIndex < tally.length) {
-      tally[a.optionIndex] += 1;
-      answered += 1;
+/**
+ * يبني خيارات مرحلة الاختيار: الجواب الصحيح + ألغام المجموعات (مع دمج المتشابه).
+ * يُستبعد أي لغم يطابق الجواب الصحيح.
+ */
+function buildOptions(comp, question) {
+  const truthNorm = normalize(question.answer);
+  const map = new Map(); // norm -> option
+  // الصحيح أولًا
+  map.set(truthNorm, { id: uid('opt'), text: question.answer, kind: 'truth', owners: [] });
+  for (const [groupId, lie] of Object.entries(comp.round.lies)) {
+    const norm = lie.norm;
+    if (norm === truthNorm) continue; // طابَق الصحيح — لا يُضاف
+    if (map.has(norm)) {
+      const opt = map.get(norm);
+      if (opt.kind === 'lie') opt.owners.push(groupId);
+      // لو طابق الصحيح تجاهلناه أعلاه
+    } else {
+      map.set(norm, { id: uid('opt'), text: lie.text, kind: 'lie', owners: [groupId] });
     }
   }
-  return { tally, answered };
+  return shuffle(Array.from(map.values()));
 }
 
-/**
- * ملخّص المجموعات مرتّبًا بالنقاط تنازليًا مع رقم الترتيب.
- */
+function findOption(comp, optionId) {
+  return (comp.round.options || []).find((o) => o.id === optionId) || null;
+}
+
+/** هل يملك المجموعة هذا الخيار (لغمها)؟ */
+function ownsOption(option, groupId) {
+  return option && option.kind === 'lie' && option.owners.indexOf(groupId) !== -1;
+}
+
+/** ملخّص المجموعات مرتّبًا بالنقاط تنازليًا. */
 function groupsSummary(comp) {
   const rows = comp.groups.map((g) => ({
     id: g.id,
     name: g.name,
     code: g.code,
     score: g.score || 0,
-    streak: g.streak || 0,
   }));
   rows.sort((a, b) => b.score - a.score);
   rows.forEach((r, i) => {
@@ -168,16 +198,17 @@ function groupsSummary(comp) {
 module.exports = {
   uid,
   makeCode,
+  normalize,
   makeQuestion,
   makeGroup,
-  sanitizeOptions,
   createCompetition,
+  emptyRound,
   findQuestion,
   findGroup,
   findGroupByCode,
   currentQuestion,
-  optionTally,
+  buildOptions,
+  findOption,
+  ownsOption,
   groupsSummary,
-  MIN_OPTIONS,
-  MAX_OPTIONS,
 };

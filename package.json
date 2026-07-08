@@ -1,7 +1,7 @@
 {
   "name": "msabgat-asila",
   "version": "1.0.0",
-  "description": "مسابقة الأسئلة - Team Quiz Game (Kahoot/كلك style) with display, host & player screens",
+  "description": "مسابقة الألغام - Team trivia bluff game (Fibbage-style) with display, host & player screens",
   "main": "server/index.js",
   "type": "commonjs",
   "scripts": {

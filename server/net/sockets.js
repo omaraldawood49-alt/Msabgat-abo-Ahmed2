@@ -45,8 +45,11 @@ function attachSockets(io, engine) {
   engine.on('question:open', ({ index }) => {
     io.emit('question:open', { index });
   });
-  engine.on('question:reveal', ({ index, correctIndex }) => {
-    io.emit('question:reveal', { index, correctIndex });
+  engine.on('question:pick', ({ index }) => {
+    io.emit('question:pick', { index });
+  });
+  engine.on('question:reveal', ({ index }) => {
+    io.emit('question:reveal', { index });
   });
   engine.on('competition:finished', ({ standings, podium }) => {
     io.emit('competition:finished', { standings, podium, name: engine.comp.name });
@@ -97,15 +100,16 @@ function attachSockets(io, engine) {
 
   // ------- أوامر المجموعة -------
   function registerPlayerHandlers(socket) {
-    socket.on('player:answer', (payload, ack) => {
-      const groupId = socket.data.groupId;
-      const { optionIndex } = payload || {};
+    socket.on('player:lie', (payload, ack) => {
       let result;
-      try {
-        result = engine.submitAnswer(groupId, optionIndex);
-      } catch (err) {
-        result = { ok: false, error: err.message };
-      }
+      try { result = engine.submitLie(socket.data.groupId, (payload || {}).text); }
+      catch (err) { result = { ok: false, error: err.message }; }
+      if (typeof ack === 'function') ack(result);
+    });
+    socket.on('player:pick', (payload, ack) => {
+      let result;
+      try { result = engine.submitPick(socket.data.groupId, (payload || {}).optionId); }
+      catch (err) { result = { ok: false, error: err.message }; }
       if (typeof ack === 'function') ack(result);
     });
   }
@@ -155,15 +159,8 @@ function attachSockets(io, engine) {
       const q = Competition.findQuestion(c, f.id);
       if (!q) throw new Error('السؤال غير موجود');
       if (f.text !== undefined) q.text = String(f.text);
+      if (f.answer !== undefined) q.answer = String(f.answer).trim();
       if (f.category !== undefined) q.category = String(f.category);
-      if (f.options !== undefined || f.correctIndex !== undefined) {
-        const sane = Competition.sanitizeOptions(
-          f.options !== undefined ? f.options : q.options,
-          f.correctIndex !== undefined ? f.correctIndex : q.correctIndex
-        );
-        q.options = sane.options;
-        q.correctIndex = sane.correctIndex;
-      }
       if (f.timeLimitSec !== undefined && f.timeLimitSec !== '') {
         q.timeLimitSec = Math.max(5, Math.min(300, Number(f.timeLimitSec) || c.defaultTimeSec));
       }
@@ -220,6 +217,7 @@ function attachSockets(io, engine) {
     socket.on('admin:start', guard(() => engine.start()));
     socket.on('admin:pause', guard(() => engine.pause()));
     socket.on('admin:resume', guard(() => engine.resume()));
+    socket.on('admin:toPick', guard(() => engine.toPick()));
     socket.on('admin:reveal', guard(() => engine.revealNow()));
     socket.on('admin:next', guard(() => engine.nextQuestion()));
     socket.on('admin:finish', guard(() => engine.finishNow()));

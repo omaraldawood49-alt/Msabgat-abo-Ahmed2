@@ -7,74 +7,106 @@ const Competition = require('../server/engine/Competition');
 const { scoreAnswer } = require('../server/engine/scoring');
 const { GameEngine } = require('../server/engine/GameEngine');
 
-test('createCompetition builds questions and groups with unique codes', () => {
-  const c = Competition.createCompetition({ groupCount: 5, questionCount: 6 });
-  assert.strictEqual(c.questions.length, 6);
-  assert.strictEqual(c.groups.length, 5);
-  const codes = new Set(c.groups.map((g) => g.code));
-  assert.strictEqual(codes.size, 5, 'أكواد المجموعات فريدة');
-  assert.strictEqual(c.groups[0].score, 0);
+function newGame(opts) {
+  const engine = new GameEngine();
+  const c = engine.newCompetition(Object.assign({ useSeed: false, groupCount: 0 }, opts));
+  return { engine, c };
+}
+function addQ(c, text, answer, extra) {
+  const q = Competition.makeQuestion(Object.assign({ text, answer, points: 1000, timeLimitSec: 30 }, extra || {}), {});
+  c.questions.push(q);
+  return q;
+}
+
+test('createCompetition samples questions from library when useSeed', () => {
+  const engine = new GameEngine();
+  const c = engine.newCompetition({ useSeed: true, questionCount: 8, groupCount: 0 });
+  assert.strictEqual(c.questions.length, 8);
+  assert.ok(c.questions[0].text && typeof c.questions[0].answer === 'string');
 });
 
-test('createCompetition can start empty when useSeed=false', () => {
-  const c = Competition.createCompetition({ useSeed: false, groupCount: 2 });
+test('empty seed starts with no questions', () => {
+  const { c } = newGame();
   assert.strictEqual(c.questions.length, 0);
 });
 
-test('sanitizeOptions trims empties and clamps correctIndex', () => {
-  const r = Competition.sanitizeOptions(['أ', '', 'ب', '  '], 5);
-  assert.deepStrictEqual(r.options, ['أ', 'ب']);
-  assert.strictEqual(r.correctIndex, 1); // مقصوص إلى آخر خيار متاح
+test('normalize matches despite spaces/punctuation/alef forms', () => {
+  assert.strictEqual(Competition.normalize('  الرِّياض. '), Competition.normalize('الرياض'));
+  assert.strictEqual(Competition.normalize('أحمد'), Competition.normalize('احمد'));
 });
 
-test('scoreAnswer: wrong=0, correct without bonus = points', () => {
+test('scoreAnswer speed bonus 50%..100%', () => {
   const q = { points: 1000, timeLimitSec: 20 };
-  assert.strictEqual(scoreAnswer(q, false, 20, true), 0);
+  assert.strictEqual(scoreAnswer(q, true, 20, true), 1000);
+  assert.strictEqual(scoreAnswer(q, true, 0, true), 500);
   assert.strictEqual(scoreAnswer(q, true, 10, false), 1000);
 });
 
-test('scoreAnswer: speed bonus rewards faster answers (50%..100%)', () => {
-  const q = { points: 1000, timeLimitSec: 20 };
-  assert.strictEqual(scoreAnswer(q, true, 20, true), 1000); // فوري
-  assert.strictEqual(scoreAnswer(q, true, 0, true), 500); // في آخر لحظة
-  assert.strictEqual(scoreAnswer(q, true, 10, true), 750); // منتصف الوقت
+test('lie phase rejects the true answer and empty lies', () => {
+  const { engine, c } = newGame();
+  addQ(c, 'عاصمة السعودية؟', 'الرياض');
+  const g = engine.addGroup('أ');
+  engine.start();
+  assert.strictEqual(c.questionState, 'lies');
+  assert.strictEqual(engine.submitLie(g.id, '  الرياض ').ok, false, 'الجواب الصحيح مرفوض كلغم');
+  assert.strictEqual(engine.submitLie(g.id, '').ok, false, 'اللغم الفارغ مرفوض');
+  assert.ok(engine.submitLie(g.id, 'جدة').ok, 'لغم صالح يُقبل');
 });
 
-test('full round: open, answer, reveal awards points to correct group', () => {
-  const engine = new GameEngine();
-  const c = engine.newCompetition({ groupCount: 2, useSeed: false, speedBonus: false });
-  c.questions.push(Competition.makeQuestion({ text: 'س', options: ['أ', 'ب'], correctIndex: 0, points: 500, timeLimitSec: 30 }, {}));
+test('buildOptions merges identical lies and excludes truth-matching lies', () => {
+  const { engine, c } = newGame();
+  const q = addQ(c, 'س؟', 'الصحيح');
+  const a = engine.addGroup('أ'), b = engine.addGroup('ب'), d = engine.addGroup('ج');
   engine.start();
-  assert.strictEqual(c.questionState, 'open');
+  engine.submitLie(a.id, 'خطأ مشترك');
+  engine.submitLie(b.id, 'خطأ مشترك'); // نفس اللغم يُدمج
+  engine.submitLie(d.id, 'الصحيح'); // يطابق الجواب → يُستبعد
+  engine.toPick();
+  const opts = c.round.options;
+  const truth = opts.filter((o) => o.kind === 'truth');
+  const lies = opts.filter((o) => o.kind === 'lie');
+  assert.strictEqual(truth.length, 1);
+  assert.strictEqual(lies.length, 1, 'اللغمان المتطابقان يُدمجان في خيار واحد');
+  assert.strictEqual(lies[0].owners.length, 2, 'الخيار المدموج له صاحبان');
+});
 
-  const [g1, g2] = c.groups;
-  assert.ok(engine.submitAnswer(g1.id, 0).ok, 'إجابة صحيحة تُقبل');
-  assert.ok(engine.submitAnswer(g2.id, 1).ok, 'إجابة خاطئة تُقبل');
-  // لا يُسمح بالإجابة مرتين
-  assert.strictEqual(engine.submitAnswer(g1.id, 1).ok, false);
-
+test('mine scoring: truth pick scores; falling into a lie rewards its owner', () => {
+  const { engine, c } = newGame({ speedBonus: false });
+  const q = addQ(c, 'س؟', 'الصحيح', { points: 1000 });
+  const a = engine.addGroup('أ'), b = engine.addGroup('ب'), d = engine.addGroup('ج');
+  engine.start();
+  engine.submitLie(a.id, 'فخ');        // لغم المجموعة أ
+  engine.submitLie(b.id, 'شيء');
+  engine.toPick();
+  const truthOpt = c.round.options.find((o) => o.kind === 'truth');
+  const trapA = c.round.options.find((o) => o.kind === 'lie' && o.owners.indexOf(a.id) !== -1);
+  // ب تصيب الصحيح، ج تقع في لغم أ
+  engine.submitPick(b.id, truthOpt.id);
+  engine.submitPick(d.id, trapA.id);
+  // أ لا يمكنها اختيار لغمها
+  assert.strictEqual(engine.submitPick(a.id, trapA.id).ok, false, 'لا يختار المرء لغمه');
+  engine.submitPick(a.id, truthOpt.id);
   engine.revealNow();
   assert.strictEqual(c.questionState, 'revealed');
-  assert.strictEqual(g1.score, 500, 'المجموعة الصحيحة تحصل على النقاط');
-  assert.strictEqual(g2.score, 0, 'المجموعة الخاطئة صفر');
+  const byId = {}; c.groups.forEach((g) => (byId[g.id] = g.score));
+  assert.strictEqual(byId[b.id], 1000, 'ب أصابت الصحيح');
+  assert.strictEqual(byId[a.id], 1000 + 500, 'أ أصابت الصحيح + أوقعت ج في لغمها (نصف النقاط)');
+  assert.strictEqual(byId[d.id], 0, 'ج وقعت في لغم');
 });
 
-test('answers rejected when not open', () => {
-  const engine = new GameEngine();
-  const c = engine.newCompetition({ groupCount: 1, useSeed: false });
-  c.questions.push(Competition.makeQuestion({ options: ['أ', 'ب'], correctIndex: 0 }, {}));
-  const g = c.groups[0];
-  assert.strictEqual(engine.submitAnswer(g.id, 0).ok, false, 'مغلق قبل البدء');
+test('answers rejected outside their phase', () => {
+  const { engine, c } = newGame();
+  addQ(c, 'س؟', 'ج');
+  const g = engine.addGroup('أ');
+  assert.strictEqual(engine.submitLie(g.id, 'x').ok, false, 'لا كتابة قبل البدء');
   engine.start();
-  engine.pause();
-  assert.strictEqual(engine.submitAnswer(g.id, 0).ok, false, 'مغلق أثناء الإيقاف');
+  assert.strictEqual(engine.submitPick(g.id, 'opt_x').ok, false, 'لا اختيار في مرحلة الألغام');
 });
 
-test('nextQuestion advances then finishes at the end', () => {
-  const engine = new GameEngine();
-  const c = engine.newCompetition({ groupCount: 1, useSeed: false });
-  c.questions.push(Competition.makeQuestion({ options: ['أ', 'ب'], correctIndex: 0 }, {}));
-  c.questions.push(Competition.makeQuestion({ options: ['ج', 'د'], correctIndex: 1 }, {}));
+test('nextQuestion advances then finishes', () => {
+  const { engine, c } = newGame();
+  addQ(c, 'س1', 'ج1');
+  addQ(c, 'س2', 'ج2');
   engine.start();
   assert.strictEqual(c.currentIndex, 0);
   engine.nextQuestion();
@@ -83,24 +115,11 @@ test('nextQuestion advances then finishes at the end', () => {
   assert.strictEqual(c.status, 'finished');
 });
 
-test('groups can be added mid-game with zero score', () => {
-  const engine = new GameEngine();
-  const c = engine.newCompetition({ groupCount: 1, useSeed: false });
-  c.questions.push(Competition.makeQuestion({ options: ['أ', 'ب'], correctIndex: 0 }, {}));
+test('groups self-join mid-game with zero score', () => {
+  const { engine, c } = newGame();
+  addQ(c, 'س', 'ج');
   engine.start();
-  const codes = new Set(c.groups.map((g) => g.code));
-  const g = Competition.makeGroup('لاعب متأخر', codes);
-  c.groups.push(g);
-  assert.strictEqual(c.groups.length, 2);
+  const g = engine.addGroup('متأخر');
   assert.strictEqual(g.score, 0);
-});
-
-test('adjustScore never goes below zero', () => {
-  const engine = new GameEngine();
-  const c = engine.newCompetition({ groupCount: 1, useSeed: false });
-  const g = c.groups[0];
-  engine.adjustScore(g.id, 300);
-  assert.strictEqual(g.score, 300);
-  engine.adjustScore(g.id, -1000);
-  assert.strictEqual(g.score, 0);
+  assert.ok(c.groups.indexOf(g) !== -1);
 });

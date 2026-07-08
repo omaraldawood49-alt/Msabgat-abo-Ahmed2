@@ -33,6 +33,7 @@
       </div>
       <div class="cb-actions">
         <button id="btnStart" class="btn btn-buy">▶ ابدأ اللعبة</button>
+        <button id="btnToPick" class="btn btn-accent">📋 اعرض الخيارات</button>
         <button id="btnReveal" class="btn btn-accent">👁 اكشف الإجابة</button>
         <button id="btnNext" class="btn btn-primary">⏩ التالي</button>
         <button id="btnFinish" class="btn btn-sm">🏁 إنهاء</button>
@@ -72,6 +73,8 @@
             <span class="muted" id="liveAnswered"></span>
           </div>
           <h2 id="liveText" class="live-q">—</h2>
+          <div id="liveAnswerBox" class="live-answer"></div>
+          <div id="liveLies" class="live-lies"></div>
           <div id="liveOpts" class="live-opts"></div>
           <p class="muted" id="liveHint" style="margin-top:14px;"></p>
         </div>
@@ -112,12 +115,13 @@
               </select>
             </div>
             <div class="field">
-              <label>الأسئلة</label>
+              <label>مصدر الأسئلة</label>
               <select id="setSeed">
-                <option value="1">ابدأ بأسئلة جاهزة</option>
+                <option value="1">من المكتبة (اختيار عشوائي)</option>
                 <option value="0">ابدأ فارغًا (أضف أسئلتك)</option>
               </select>
             </div>
+            <div class="field"><label>عدد الأسئلة (من المكتبة)</label><input id="setCount" type="number" min="1" max="50" value="10" /></div>
           </div>
           <div class="row-actions">
             <button id="btnCreate" class="btn btn-accent">🆕 إنشاء مسابقة جديدة</button>
@@ -148,9 +152,8 @@
       <button id="qEditClose" class="qr-close">✕</button>
       <h3 id="qEditTitle">تحرير سؤال</h3>
       <div class="field"><label>نص السؤال</label><input id="qeText" /></div>
+      <div class="field"><label>الجواب الصحيح</label><input id="qeAnswer" placeholder="الجواب الصحيح الوحيد" /></div>
       <div class="field"><label>التصنيف (اختياري)</label><input id="qeCat" /></div>
-      <label>الخيارات — اختر الإجابة الصحيحة</label>
-      <div id="qeOptions" class="qe-options"></div>
       <div class="grid2" style="margin-top:10px;">
         <div class="field"><label>مدة السؤال (ثانية)</label><input id="qeTime" type="number" min="5" max="300" /></div>
         <div class="field"><label>النقاط</label><input id="qePoints" type="number" min="0" /></div>

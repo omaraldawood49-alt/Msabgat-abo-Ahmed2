@@ -5,16 +5,15 @@ const Competition = require('./Competition');
 const { scoreAnswer } = require('./scoring');
 
 /**
- * محرّك لعبة الأسئلة: يدير دورة حياة الأسئلة والمؤقّت واستقبال الإجابات وحساب النقاط.
- * مصدر الحقيقة الوحيد للحالة (server-authoritative).
+ * محرّك لعبة «اللغم» (على غرار Fibbage):
+ *  لكل سؤال ثلاث مراحل:
+ *   1) lies  : يظهر السؤال بلا خيارات، وتكتب كل مجموعة جوابًا مضلِّلًا (لغمًا).
+ *   2) pick  : تظهر كل الألغام + الجواب الصحيح مخلوطة، وتختار كل مجموعة إجابة.
+ *   3) revealed : يُكشف الصحيح، وتُحتسب النقاط.
  *
- * الأحداث المبثوثة:
- *  - 'state'               : تغيّر عام في الحالة (يستدعي إعادة البثّ)
- *  - 'tick'                : نبضة كل ثانية أثناء سؤال مفتوح { timeLeft }
- *  - 'question:open'       : فتح سؤال جديد { index }
- *  - 'question:reveal'     : كشف الإجابة الصحيحة والنقاط { index, correctIndex }
- *  - 'competition:finished': انتهاء المسابقة { standings, podium }
- *  - 'answer'              : وصول إجابة من مجموعة { groupId }
+ * النقاط:
+ *   - اختيار الجواب الصحيح: نقاط السؤال (مع مكافأة سرعة اختيارية).
+ *   - وقوع مجموعة أخرى في لغمك: تكسب صاحبة اللغم نصف نقاط السؤال عن كل من وقع فيه.
  */
 class GameEngine extends EventEmitter {
   constructor() {
@@ -46,10 +45,10 @@ class GameEngine extends EventEmitter {
   }
 
   loadCompetition(comp) {
-    // استعادة مسابقة محفوظة مع إيقاف أي مؤقّت جارٍ (يستأنفها المقدّم يدويًا)
     this._clearTimers();
     this.comp = comp;
-    this._setPaused(comp.questionState === 'open');
+    if (!comp.round) comp.round = Competition.emptyRound();
+    this._setPaused(comp.questionState === 'lies' || comp.questionState === 'pick');
     this.emit('state');
   }
 
@@ -58,7 +57,7 @@ class GameEngine extends EventEmitter {
     return this.comp;
   }
 
-  // -------------------- دورة حياة الأسئلة --------------------
+  // -------------------- دورة حياة السؤال --------------------
 
   start() {
     const comp = this.requireComp();
@@ -79,12 +78,11 @@ class GameEngine extends EventEmitter {
     const q = Competition.currentQuestion(comp);
     if (!q) return this._finish();
     comp.status = 'running';
-    comp.questionState = 'open';
+    comp.questionState = 'lies';
     comp.timeLeft = q.timeLimitSec;
-    // مسح إجابات هذا السؤال (في حال أُعيد فتحه)
-    for (const g of comp.groups) delete g.answers[q.id];
+    comp.round = Competition.emptyRound();
     this._setPaused(false);
-    this.emit('question:open', { index: comp.currentIndex });
+    this.emit('question:open', { index: comp.currentIndex, phase: 'lies' });
     this.emit('state');
     this._startTicking();
   }
@@ -93,77 +91,103 @@ class GameEngine extends EventEmitter {
     this._clearTickTimer();
     this._tickTimer = setInterval(() => {
       const comp = this.comp;
-      if (!comp || comp.questionState !== 'open' || this.paused) return;
+      if (!comp || this.paused) return;
+      if (comp.questionState !== 'lies' && comp.questionState !== 'pick') return;
       comp.timeLeft -= 1;
       if (comp.timeLeft <= 0) {
         comp.timeLeft = 0;
         this.emit('tick', { timeLeft: 0 });
-        this._revealQuestion();
+        if (comp.questionState === 'lies') this._toPick();
+        else this._reveal();
       } else {
         this.emit('tick', { timeLeft: comp.timeLeft });
       }
     }, 1000);
-    // لا يمنع المؤقّت خروج العملية (السيرفر يُبقيها حيّة في الإنتاج؛ ويسمح للاختبارات بالخروج)
     if (typeof this._tickTimer.unref === 'function') this._tickTimer.unref();
   }
 
   pause() {
     const comp = this.requireComp();
-    if (comp.questionState !== 'open') return comp;
+    if (comp.questionState !== 'lies' && comp.questionState !== 'pick') return comp;
     this._setPaused(true);
     this.emit('state');
     return comp;
   }
-
   resume() {
     const comp = this.requireComp();
-    if (comp.questionState !== 'open') return comp;
+    if (comp.questionState !== 'lies' && comp.questionState !== 'pick') return comp;
     this._setPaused(false);
     this.emit('state');
     return comp;
   }
 
-  /** إنهاء استقبال الإجابات وكشف الصحيح فورًا (زر المقدّم «كشف الإجابة»). */
-  revealNow() {
+  /** الانتقال من مرحلة كتابة الألغام إلى مرحلة الاختيار. */
+  toPick() {
     const comp = this.requireComp();
-    if (comp.questionState === 'open') this._revealQuestion();
+    if (comp.questionState === 'lies') this._toPick();
     return comp;
   }
+  _toPick() {
+    const comp = this.comp;
+    const q = Competition.currentQuestion(comp);
+    if (!q) return this._finish();
+    comp.round.options = Competition.buildOptions(comp, q);
+    comp.round.picks = {};
+    comp.questionState = 'pick';
+    comp.timeLeft = q.timeLimitSec;
+    this._setPaused(false);
+    this.emit('question:pick', { index: comp.currentIndex });
+    this.emit('state');
+    this._startTicking();
+  }
 
-  _revealQuestion() {
+  /** كشف الإجابة واحتساب النقاط. */
+  revealNow() {
+    const comp = this.requireComp();
+    if (comp.questionState === 'lies') { this._toPick(); return comp; }
+    if (comp.questionState === 'pick') this._reveal();
+    return comp;
+  }
+  _reveal() {
     const comp = this.comp;
     this._clearTickTimer();
     const q = Competition.currentQuestion(comp);
     if (!q) return this._finish();
 
-    // حساب النقاط لكل مجموعة أجابت
-    for (const g of comp.groups) {
-      const a = g.answers[q.id];
-      if (!a) {
-        g.streak = 0; // من لم يجب يفقد سلسلة الإجابات المتتالية
-        continue;
-      }
-      a.correct = a.optionIndex === q.correctIndex;
-      a.awarded = scoreAnswer(q, a.correct, a.atTimeLeft, comp.speedBonus);
-      if (a.correct) {
-        g.streak = (g.streak || 0) + 1;
+    const round = comp.round;
+    round.awarded = {};
+    const add = (groupId, pts) => {
+      const g = Competition.findGroup(comp, groupId);
+      if (!g) return;
+      g.score = (g.score || 0) + pts;
+      round.awarded[groupId] = (round.awarded[groupId] || 0) + pts;
+    };
+    const lieReward = Math.round((Number(q.points) || 0) / 2);
+
+    for (const [groupId, optId] of Object.entries(round.picks)) {
+      const opt = Competition.findOption(comp, optId);
+      if (!opt) continue;
+      if (opt.kind === 'truth') {
+        // نقاط الإصابة (مع مكافأة السرعة إن فُعّلت)
+        add(groupId, scoreAnswer(q, true, round.pickTimeLeft ? round.pickTimeLeft[groupId] || 0 : 0, comp.speedBonus));
       } else {
-        g.streak = 0;
+        // وقعت المجموعة في لغم — يكسب أصحاب اللغم
+        for (const ownerId of opt.owners) {
+          if (ownerId !== groupId) add(ownerId, lieReward);
+        }
       }
-      g.score = (g.score || 0) + a.awarded;
     }
 
     comp.questionState = 'revealed';
     this._setPaused(false);
-    this.emit('question:reveal', { index: comp.currentIndex, correctIndex: q.correctIndex });
+    this.emit('question:reveal', { index: comp.currentIndex });
     this.emit('state');
   }
 
-  /** الانتقال للسؤال التالي (أو إنهاء المسابقة إذا كان الأخير). */
   nextQuestion() {
     const comp = this.requireComp();
-    // إن كان السؤال ما زال مفتوحًا، اكشفه أولًا لاحتساب النقاط
-    if (comp.questionState === 'open') this._revealQuestion();
+    if (comp.questionState === 'lies') this._toPick();
+    if (comp.questionState === 'pick') this._reveal();
     if (comp.currentIndex + 1 >= comp.questions.length) {
       this._finish();
     } else {
@@ -182,50 +206,59 @@ class GameEngine extends EventEmitter {
     this.emit('competition:finished', { standings, podium: standings.slice(0, 3) });
     this.emit('state');
   }
-
-  /** إنهاء المسابقة يدويًا من المقدّم. */
   finishNow() {
     this.requireComp();
     this._finish();
     return this.comp;
   }
 
-  // -------------------- استقبال الإجابات --------------------
+  // -------------------- إجابات المجموعات --------------------
 
-  /**
-   * تسجيل إجابة مجموعة على السؤال الحالي. تُقبل مرة واحدة فقط لكل سؤال.
-   * @returns {{ok:boolean, error?:string}}
-   */
-  submitAnswer(groupId, optionIndex) {
+  /** تسجيل لغم (جواب مضلِّل) في مرحلة lies. يمكن تغييره حتى تنتهي المرحلة. */
+  submitLie(groupId, text) {
     const comp = this.requireComp();
-    if (comp.questionState !== 'open' || this.paused) {
-      return { ok: false, error: 'الإجابة مغلقة حاليًا' };
+    if (comp.questionState !== 'lies' || this.paused) {
+      return { ok: false, error: 'كتابة الأجوبة مغلقة حاليًا' };
     }
     const q = Competition.currentQuestion(comp);
     if (!q) return { ok: false, error: 'لا يوجد سؤال نشط' };
     const group = Competition.findGroup(comp, groupId);
     if (!group) return { ok: false, error: 'المجموعة غير موجودة' };
-    if (group.answers[q.id]) {
-      return { ok: false, error: 'سبق أن أجبتم على هذا السؤال' };
+    const clean = String(text || '').trim().slice(0, 60);
+    if (!clean) return { ok: false, error: 'اكتب جوابًا' };
+    const norm = Competition.normalize(clean);
+    if (norm === Competition.normalize(q.answer)) {
+      return { ok: false, error: 'هذا هو الجواب الصحيح! اكتب جوابًا مضلِّلًا آخر' };
     }
-    const idx = Math.floor(Number(optionIndex));
-    if (!Number.isInteger(idx) || idx < 0 || idx >= q.options.length) {
-      return { ok: false, error: 'خيار غير صالح' };
-    }
-    group.answers[q.id] = {
-      optionIndex: idx,
-      atTimeLeft: comp.timeLeft,
-      correct: null,
-      awarded: 0,
-    };
+    comp.round.lies[groupId] = { text: clean, norm };
     this.emit('answer', { groupId });
     this.emit('state');
     return { ok: true };
   }
 
-  // -------------------- إضافة مجموعة (انضمام ذاتي بالاسم) --------------------
+  /** اختيار إجابة في مرحلة pick. لا يمكن اختيار لغم المجموعة نفسها. */
+  submitPick(groupId, optionId) {
+    const comp = this.requireComp();
+    if (comp.questionState !== 'pick' || this.paused) {
+      return { ok: false, error: 'الاختيار مغلق حاليًا' };
+    }
+    const group = Competition.findGroup(comp, groupId);
+    if (!group) return { ok: false, error: 'المجموعة غير موجودة' };
+    const opt = Competition.findOption(comp, optionId);
+    if (!opt) return { ok: false, error: 'خيار غير صالح' };
+    if (Competition.ownsOption(opt, groupId)) {
+      return { ok: false, error: 'لا يمكنك اختيار لغمك أنت' };
+    }
+    comp.round.picks[groupId] = optionId;
+    if (!comp.round.pickTimeLeft) comp.round.pickTimeLeft = {};
+    comp.round.pickTimeLeft[groupId] = comp.timeLeft;
+    this.emit('answer', { groupId });
+    this.emit('state');
+    return { ok: true };
+  }
 
-  /** ينشئ مجموعة جديدة باسمٍ مُعطى (يستخدمه الانضمام الذاتي من الجوال). */
+  // -------------------- إضافة مجموعة (انضمام ذاتي) --------------------
+
   addGroup(name) {
     const comp = this.requireComp();
     const codes = new Set(comp.groups.map((g) => g.code));
@@ -259,7 +292,6 @@ class GameEngine extends EventEmitter {
       this._tickTimer = null;
     }
   }
-
   _clearTimers() {
     this._clearTickTimer();
   }

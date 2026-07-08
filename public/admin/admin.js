@@ -1,7 +1,6 @@
 (function () {
   'use strict';
   var el = U.el, fmt = U.fmt;
-  var SHAPES = ['▲', '◆', '●', '■'];
 
   var socket = null;
   var state = null;
@@ -69,6 +68,7 @@
 
   // ---------- أزرار التحكم ----------
   document.getElementById('btnStart').onclick = function () { send('admin:start'); };
+  document.getElementById('btnToPick').onclick = function () { send('admin:toPick'); };
   document.getElementById('btnReveal').onclick = function () { send('admin:reveal'); };
   document.getElementById('btnNext').onclick = function () { send('admin:next'); };
   document.getElementById('btnFinish').onclick = function () { if (confirm('إنهاء المسابقة الآن؟')) send('admin:finish'); };
@@ -90,6 +90,7 @@
       defaultPoints: parseInt(document.getElementById('setPoints').value, 10) || 1000,
       speedBonus: document.getElementById('setSpeed').value === '1',
       useSeed: document.getElementById('setSeed').value === '1',
+      questionCount: parseInt(document.getElementById('setCount').value, 10) || 10,
       groupCount: 0,
     };
   }
@@ -126,45 +127,22 @@
     editingId = q ? q.id : null;
     document.getElementById('qEditTitle').textContent = q ? 'تحرير سؤال' : 'سؤال جديد';
     document.getElementById('qeText').value = q ? q.text : '';
+    document.getElementById('qeAnswer').value = q ? q.answer : '';
     document.getElementById('qeCat').value = q ? q.category : '';
-    document.getElementById('qeTime').value = q ? q.timeLimitSec : (state ? state.defaultTimeSec : 20);
+    document.getElementById('qeTime').value = q ? q.timeLimitSec : (state ? state.defaultTimeSec : 45);
     document.getElementById('qePoints').value = q ? q.points : (state ? state.defaultPoints : 1000);
-
-    var opts = q ? q.options.slice() : ['', '', '', ''];
-    while (opts.length < 4) opts.push('');
-    var correct = q ? q.correctIndex : 0;
-    var wrap = document.getElementById('qeOptions');
-    wrap.innerHTML = '';
-    for (var i = 0; i < 4; i++) {
-      (function (idx) {
-        var radio = el('input', { type: 'radio', name: 'qeCorrect', value: idx });
-        if (idx === correct) radio.checked = true;
-        var textInput = el('input', { type: 'text', value: opts[idx], placeholder: 'الخيار ' + (idx + 1) + ' (اتركه فارغًا لحذفه)' });
-        wrap.appendChild(el('div', { class: 'qe-opt opt-' + idx }, [
-          radio,
-          el('span', { class: 'shape', style: 'color:var(--opt)' }, [SHAPES[idx]]),
-          textInput
-        ]));
-      })(i);
-    }
     qEditModal.classList.remove('hidden');
   }
 
   document.getElementById('qeSave').onclick = function () {
     var text = document.getElementById('qeText').value.trim();
+    var answer = document.getElementById('qeAnswer').value.trim();
     if (!text) { U.toast('اكتب نص السؤال', 'err'); return; }
-    var optInputs = document.querySelectorAll('#qeOptions .qe-opt input[type="text"]');
-    var options = Array.prototype.map.call(optInputs, function (i) { return i.value; });
-    var checked = document.querySelector('#qeOptions input[name="qeCorrect"]:checked');
-    var correctIndex = checked ? parseInt(checked.value, 10) : 0;
-    if (!options[correctIndex] || !options[correctIndex].trim()) {
-      U.toast('الخيار الصحيح لا يمكن أن يكون فارغًا', 'err'); return;
-    }
+    if (!answer) { U.toast('اكتب الجواب الصحيح', 'err'); return; }
     var payload = {
       text: text,
+      answer: answer,
       category: document.getElementById('qeCat').value.trim(),
-      options: options,
-      correctIndex: correctIndex,
       timeLimitSec: parseInt(document.getElementById('qeTime').value, 10) || undefined,
       points: parseInt(document.getElementById('qePoints').value, 10),
     };
@@ -184,7 +162,8 @@
     badge.textContent = !active ? 'لا توجد مسابقة'
       : state.status === 'finished' ? 'انتهت'
       : state.currentIndex < 0 ? 'بانتظار الانضمام'
-      : state.questionState === 'open' ? 'الإجابة مفتوحة'
+      : state.questionState === 'lies' ? 'كتابة الألغام 💣'
+      : state.questionState === 'pick' ? 'الاختيار'
       : state.questionState === 'revealed' ? 'كُشفت الإجابة' : '—';
     document.getElementById('cbNum').textContent = active && state.currentIndex >= 0 ? state.questionNumber : 0;
     document.getElementById('cbTotal').textContent = active ? ' / ' + state.total : '';
@@ -227,7 +206,8 @@
 
   function updateControlButtons() {
     var a = state && state.active;
-    var open = a && state.questionState === 'open';
+    var lies = a && state.questionState === 'lies';
+    var pick = a && state.questionState === 'pick';
     var revealed = a && state.questionState === 'revealed';
     var finished = a && state.status === 'finished';
     var notStarted = a && state.currentIndex < 0;
@@ -237,7 +217,8 @@
       b.disabled = !!dis;
     }
     set('btnStart', notStarted, false);
-    set('btnReveal', open, false);
+    set('btnToPick', lies, false);
+    set('btnReveal', pick, false);
     set('btnNext', revealed, false);
     set('btnFinish', a && !finished && state.currentIndex >= 0, false);
     set('btnReset', a, false);
@@ -258,31 +239,51 @@
     if (!state.groups || !state.groups.length) wrap.innerHTML = '<span class="muted">لم تنضم أي مجموعة بعد...</span>';
   }
 
-  // بطاقة السؤال
+  // بطاقة السؤال (حسب المرحلة)
   function renderLive() {
     var card = document.getElementById('liveCard');
     var cur = state.current;
     if (!cur) { card.classList.add('hidden'); return; }
     card.classList.remove('hidden');
+    var ph = cur.phase;
     document.getElementById('liveCat').textContent = cur.category || 'سؤال';
-    document.getElementById('liveAnswered').textContent = 'أجاب ' + cur.answered + ' من ' + cur.total;
     document.getElementById('liveText').textContent = cur.text;
-    var revealed = state.questionState === 'revealed';
+    document.getElementById('liveAnswerBox').innerHTML =
+      '<span class="ans-label">الجواب الصحيح:</span> ' + escapeHtml(cur.answer);
+
+    var liesWrap = document.getElementById('liveLies');
     var optsWrap = document.getElementById('liveOpts');
-    optsWrap.innerHTML = '';
-    cur.options.forEach(function (o, i) {
-      var isCorrect = i === cur.correctIndex;
-      optsWrap.appendChild(el('div', { class: 'live-opt opt-' + i + ((revealed && isCorrect) ? ' correct' : '') }, [
-        el('span', { class: 'shape' }, [SHAPES[i] || '●']),
-        el('span', { class: 'otext' }, [o + (isCorrect ? '  ✓' : '')]),
-        el('span', { class: 'cnt mono' }, [String(cur.tally[i] || 0)])
-      ]));
-    });
-    document.getElementById('liveHint').textContent = state.questionState === 'open'
-      ? 'الإجابة مفتوحة — اضغط «اكشف الإجابة» أو انتظر انتهاء الوقت.'
-      : revealed ? 'الإجابة الصحيحة محدّدة بعلامة ✓. اضغط «التالي».'
-      : state.status === 'finished' ? 'انتهت المسابقة.' : '';
+    liesWrap.innerHTML = ''; optsWrap.innerHTML = '';
+
+    if (ph === 'lies') {
+      document.getElementById('liveAnswered').textContent = 'زرع لغمه ' + cur.liesCount + ' من ' + cur.total;
+      (cur.lies || []).forEach(function (l) {
+        liesWrap.appendChild(el('div', { class: 'lie-item' }, [
+          el('b', {}, [l.group + ': ']), l.text
+        ]));
+      });
+      if (!cur.lies || !cur.lies.length) liesWrap.innerHTML = '<p class="muted">لم تُكتب ألغام بعد...</p>';
+      document.getElementById('liveHint').textContent = 'انتظر كتابة الألغام ثم اضغط «اعرض الخيارات».';
+    } else {
+      document.getElementById('liveAnswered').textContent = 'اختار ' + cur.picksCount + ' من ' + cur.total;
+      (cur.options || []).forEach(function (o, i) {
+        var revealed = ph === 'revealed';
+        var cls = 'live-opt opt-' + (i % 4);
+        if (revealed && o.truth) cls += ' correct';
+        var meta = [];
+        if (o.truth) meta.push('✅');
+        if (revealed && o.owners && o.owners.length) meta.push('💣 ' + o.owners.join('، '));
+        optsWrap.appendChild(el('div', { class: cls }, [
+          el('span', { class: 'otext' }, [o.text + (meta.length ? '  — ' + meta.join(' ') : '')]),
+          el('span', { class: 'cnt mono' }, [String(o.pickCount || 0)])
+        ]));
+      });
+      document.getElementById('liveHint').textContent = ph === 'pick'
+        ? 'يختار المشاركون الآن — اضغط «اكشف الإجابة» عند الجاهزية.'
+        : ph === 'revealed' ? '✅ الصحيح مميّز، و💣 يدل على صاحب اللغم. اضغط «التالي».' : '';
+    }
   }
+  function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; }
 
   function renderBoard() {
     document.getElementById('groupCount').textContent = '(' + (state.groups ? state.groups.length : 0) + ')';
@@ -323,7 +324,7 @@
             el('button', { class: 'btn btn-sm btn-sell', text: '🗑', onclick: function () { if (confirm('حذف هذا السؤال؟')) send('admin:question:remove', { id: q.id }); } })
           ])
         ]),
-        el('div', { class: 'qrow-answer' }, ['الإجابة: ' + (SHAPES[q.correctIndex] || '') + ' ' + q.options[q.correctIndex]]),
+        el('div', { class: 'qrow-answer' }, ['✅ الجواب: ' + q.answer]),
         el('div', { class: 'qrow-meta' }, [
           q.category ? el('span', { class: 'chip' }, [q.category]) : null,
           el('span', { class: 'chip' }, ['⏱ ' + q.timeLimitSec + 'ث']),

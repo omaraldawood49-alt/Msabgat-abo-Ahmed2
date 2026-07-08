@@ -10,58 +10,72 @@ function baseMeta(comp) {
     total: comp.questions.length,
     currentIndex: comp.currentIndex,
     questionNumber: comp.currentIndex >= 0 ? comp.currentIndex + 1 : 0,
-    questionState: comp.questionState,
+    questionState: comp.questionState, // idle | lies | pick | revealed
     timeLeft: comp.timeLeft,
     speedBonus: comp.speedBonus,
   };
 }
 
-/** الخيارات كما تُرى قبل الكشف (بدون تمييز الصحيح). */
-function publicOptions(q) {
-  return q.options.map((text, i) => ({ index: i, text }));
+function nameOf(comp, groupId) {
+  const g = Competition.findGroup(comp, groupId);
+  return g ? g.name : '—';
 }
 
-/**
- * حالة شاشة العرض (البروجكتر):
- *  - أثناء السؤال: نص السؤال + الخيارات + عدد المجيبين (بدون كشف الصحيح).
- *  - عند الكشف: الصحيح + توزيع الإجابات + لوحة الترتيب.
- *  - في الردهة/بين الأسئلة/النهاية: لوحة الترتيب وأسماء المجموعات.
- */
+/** عدد المجموعات التي كتبت لغمًا / اختارت. */
+function counts(comp) {
+  const r = comp.round || {};
+  return {
+    lies: Object.keys(r.lies || {}).length,
+    picks: Object.keys(r.picks || {}).length,
+    total: comp.groups.length,
+  };
+}
+
+// -------------------- شاشة العرض --------------------
 function displayState(comp) {
   if (!comp) return { active: false };
   const q = Competition.currentQuestion(comp);
-  const revealed = comp.questionState === 'revealed';
-  const finished = comp.status === 'finished';
-  const leaderboard = Competition.groupsSummary(comp);
-
+  const phase = comp.questionState;
   const out = Object.assign({ active: true }, baseMeta(comp), {
     groupCount: comp.groups.length,
-    leaderboard,
-    // في الردهة نعرض أسماء المجموعات المنضمّة لتشجيع الانضمام
+    leaderboard: Competition.groupsSummary(comp),
     lobby: comp.groups.map((g) => ({ id: g.id, name: g.name })),
   });
+  if (!q) { out.question = null; return out; }
 
-  if (q) {
-    const { tally, answered } = Competition.optionTally(comp, q);
-    out.question = {
-      text: q.text,
-      category: q.category,
-      options: publicOptions(q),
-      timeLimitSec: q.timeLimitSec,
-      points: q.points,
-      answered,
-      total: comp.groups.length,
-      // توزيع الإجابات لا يظهر إلا بعد الكشف (حتى لا يُلمِّح للصحيح)
-      tally: revealed ? tally : null,
-      correctIndex: revealed ? q.correctIndex : null,
-    };
+  const c = counts(comp);
+  const base = { text: q.text, category: q.category, points: q.points, timeLimitSec: q.timeLimitSec, phase: phase, answered: phase === 'lies' ? c.lies : c.picks, total: c.total };
+
+  if (phase === 'lies') {
+    out.question = base;
+  } else if (phase === 'pick') {
+    out.question = Object.assign(base, {
+      options: (comp.round.options || []).map((o) => ({ id: o.id, text: o.text })),
+    });
+  } else if (phase === 'revealed') {
+    out.question = Object.assign(base, {
+      answer: q.answer,
+      options: (comp.round.options || []).map((o) => {
+        const pickedBy = Object.entries(comp.round.picks || {})
+          .filter(([, oid]) => oid === o.id)
+          .map(([gid]) => nameOf(comp, gid));
+        return {
+          id: o.id,
+          text: o.text,
+          truth: o.kind === 'truth',
+          owners: (o.owners || []).map((gid) => nameOf(comp, gid)),
+          pickedBy: pickedBy,
+          pickCount: pickedBy.length,
+        };
+      }),
+    });
   } else {
-    out.question = null;
+    out.question = base;
   }
   return out;
 }
 
-/** حالة المقدّم/الأدمن: كل التفاصيل (الأكواد، السؤال الصحيح، من أجاب، النقاط). */
+// -------------------- شاشة المقدّم --------------------
 function adminState(comp) {
   if (!comp) return { active: false };
   const q = Competition.currentQuestion(comp);
@@ -70,69 +84,84 @@ function adminState(comp) {
     defaultTimeSec: comp.defaultTimeSec,
     defaultPoints: comp.defaultPoints,
     questions: comp.questions.map((qq, i) => ({
-      id: qq.id,
-      index: i,
-      text: qq.text,
-      options: qq.options.slice(),
-      correctIndex: qq.correctIndex,
-      category: qq.category,
-      timeLimitSec: qq.timeLimitSec,
-      points: qq.points,
+      id: qq.id, index: i, text: qq.text, answer: qq.answer,
+      category: qq.category, timeLimitSec: qq.timeLimitSec, points: qq.points,
     })),
     groups: Competition.groupsSummary(comp),
   });
 
-  if (q) {
-    const { tally, answered } = Competition.optionTally(comp, q);
-    out.current = {
-      id: q.id,
-      text: q.text,
-      category: q.category,
-      options: q.options.slice(),
-      correctIndex: q.correctIndex,
-      timeLimitSec: q.timeLimitSec,
-      points: q.points,
-      tally,
-      answered,
-      total: comp.groups.length,
-    };
-  } else {
-    out.current = null;
+  if (!q) { out.current = null; return out; }
+  const c = counts(comp);
+  const cur = {
+    id: q.id, text: q.text, answer: q.answer, category: q.category,
+    points: q.points, phase: comp.questionState,
+    liesCount: c.lies, picksCount: c.picks, total: c.total,
+    lies: Object.entries(comp.round.lies || {}).map(([gid, l]) => ({ group: nameOf(comp, gid), text: l.text })),
+  };
+  if (comp.questionState === 'pick' || comp.questionState === 'revealed') {
+    cur.options = (comp.round.options || []).map((o) => {
+      const pickedBy = Object.entries(comp.round.picks || {})
+        .filter(([, oid]) => oid === o.id).map(([gid]) => nameOf(comp, gid));
+      return {
+        id: o.id, text: o.text, truth: o.kind === 'truth',
+        owners: (o.owners || []).map((gid) => nameOf(comp, gid)),
+        pickedBy: pickedBy, pickCount: pickedBy.length,
+      };
+    });
   }
+  out.current = cur;
   return out;
 }
 
-/**
- * حالة جوال المجموعة: الخيارات كأزرار + حالة إجابتها + نتيجتها بعد الكشف.
- */
+// -------------------- جوال المجموعة --------------------
 function playerState(comp, group) {
   if (!comp || !group) return { active: false };
   const q = Competition.currentQuestion(comp);
   const leaderboard = Competition.groupsSummary(comp);
   const me = leaderboard.find((r) => r.id === group.id) || { rank: 0, score: group.score || 0 };
-
   const out = Object.assign({ active: true }, baseMeta(comp), {
-    group: { id: group.id, name: group.name, score: me.score, rank: me.rank, streak: group.streak || 0 },
+    group: { id: group.id, name: group.name, score: me.score, rank: me.rank },
     groupCount: comp.groups.length,
   });
+  if (!q) { out.question = null; return out; }
 
-  if (q) {
-    const revealed = comp.questionState === 'revealed';
-    const myAnswer = group.answers[q.id] || null;
-    out.question = {
-      text: q.text,
-      category: q.category,
-      options: publicOptions(q),
-      timeLimitSec: q.timeLimitSec,
-      answered: !!myAnswer,
-      myOption: myAnswer ? myAnswer.optionIndex : null,
-      // نتيجتي تظهر بعد الكشف فقط
-      correctIndex: revealed ? q.correctIndex : null,
-      myCorrect: revealed && myAnswer ? myAnswer.correct : null,
-      myAwarded: revealed && myAnswer ? myAnswer.awarded : 0,
-    };
+  const phase = comp.questionState;
+  const myLie = (comp.round.lies || {})[group.id] || null;
+  const base = { text: q.text, category: q.category, phase: phase };
+
+  if (phase === 'lies') {
+    out.question = Object.assign(base, { myLie: myLie ? myLie.text : null });
+  } else if (phase === 'pick') {
+    out.question = Object.assign(base, {
+      myPick: (comp.round.picks || {})[group.id] || null,
+      options: (comp.round.options || []).map((o) => ({
+        id: o.id, text: o.text, mine: Competition.ownsOption(o, group.id),
+      })),
+    });
+  } else if (phase === 'revealed') {
+    const myPickId = (comp.round.picks || {})[group.id] || null;
+    const myOpt = myPickId ? Competition.findOption(comp, myPickId) : null;
+    // كم وقع في لغمي؟
+    let myLieTakers = 0;
+    for (const o of comp.round.options || []) {
+      if (Competition.ownsOption(o, group.id)) {
+        myLieTakers = Object.entries(comp.round.picks || {})
+          .filter(([gid, oid]) => oid === o.id && gid !== group.id).length;
+      }
+    }
+    out.question = Object.assign(base, {
+      answer: q.answer,
+      myPickCorrect: myOpt ? myOpt.kind === 'truth' : null,
+      myLieText: myLie ? myLie.text : null,
+      myLieTakers: myLieTakers,
+      awarded: (comp.round.awarded || {})[group.id] || 0,
+      options: (comp.round.options || []).map((o) => ({
+        id: o.id, text: o.text, truth: o.kind === 'truth',
+        mine: Competition.ownsOption(o, group.id), picked: o.id === myPickId,
+      })),
+    });
   } else {
-    out.question = null;
+    out.question = base;
   }
   return out;
 }
