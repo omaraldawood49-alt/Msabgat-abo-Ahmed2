@@ -1,102 +1,140 @@
 'use strict';
 
 const Competition = require('../engine/Competition');
-const { TRANSITION_MS } = require('../engine/GameEngine');
-
-// عرض عام للسهم (يُرى في كل الواجهات)
-function publicStock(s) {
-  return {
-    id: s.id,
-    name: s.name,
-    price: s.price,
-    prevPrice: s.prevPrice,
-    startPrice: s.startPrice,
-    direction: s.direction,
-    lastChangePct: s.lastChangePct,
-  };
-}
 
 function baseMeta(comp) {
   return {
     id: comp.id,
     name: comp.name,
     status: comp.status,
-    pricingMode: comp.pricingMode,
-    rounds: comp.rounds,
-    currentRound: comp.currentRound,
-    roundState: comp.roundState,
-    roundDurationSec: comp.roundDurationSec,
+    total: comp.questions.length,
+    currentIndex: comp.currentIndex,
+    questionNumber: comp.currentIndex >= 0 ? comp.currentIndex + 1 : 0,
+    questionState: comp.questionState,
     timeLeft: comp.timeLeft,
-    transitionMs: TRANSITION_MS,
-    news: comp.news || [],
+    speedBonus: comp.speedBonus,
   };
 }
 
+/** الخيارات كما تُرى قبل الكشف (بدون تمييز الصحيح). */
+function publicOptions(q) {
+  return q.options.map((text, i) => ({ index: i, text }));
+}
+
 /**
- * حالة شاشة العرض: الميتا + الأسهم فقط أثناء اللعب.
- * ترتيب/ثروة المجموعات مخفية تمامًا حتى انتهاء المنافسة (تُكشف في الختام فقط).
+ * حالة شاشة العرض (البروجكتر):
+ *  - أثناء السؤال: نص السؤال + الخيارات + عدد المجيبين (بدون كشف الصحيح).
+ *  - عند الكشف: الصحيح + توزيع الإجابات + لوحة الترتيب.
+ *  - في الردهة/بين الأسئلة/النهاية: لوحة الترتيب وأسماء المجموعات.
  */
 function displayState(comp) {
   if (!comp) return { active: false };
+  const q = Competition.currentQuestion(comp);
+  const revealed = comp.questionState === 'revealed';
   const finished = comp.status === 'finished';
-  // لا نُرسل بيانات المجموعات إطلاقًا قبل النهاية
-  const summary = finished
-    ? Competition.groupsSummary(comp).map((r) => ({
-        id: r.id,
-        name: r.name,
-        wealth: r.wealth,
-        pnl: r.pnl,
-        pnlPct: r.pnlPct,
-        rank: r.rank,
-      }))
-    : [];
-  return Object.assign({ active: true }, baseMeta(comp), {
-    stocks: comp.stocks.map(publicStock),
-    rankingHidden: !finished,
-    leaderboard: summary,
-    lastMoves: comp.lastMoves || [],
+  const leaderboard = Competition.groupsSummary(comp);
+
+  const out = Object.assign({ active: true }, baseMeta(comp), {
+    groupCount: comp.groups.length,
+    leaderboard,
+    // في الردهة نعرض أسماء المجموعات المنضمّة لتشجيع الانضمام
+    lobby: comp.groups.map((g) => ({ id: g.id, name: g.name })),
   });
+
+  if (q) {
+    const { tally, answered } = Competition.optionTally(comp, q);
+    out.question = {
+      text: q.text,
+      category: q.category,
+      options: publicOptions(q),
+      timeLimitSec: q.timeLimitSec,
+      points: q.points,
+      answered,
+      total: comp.groups.length,
+      // توزيع الإجابات لا يظهر إلا بعد الكشف (حتى لا يُلمِّح للصحيح)
+      tally: revealed ? tally : null,
+      correctIndex: revealed ? q.correctIndex : null,
+    };
+  } else {
+    out.question = null;
+  }
+  return out;
 }
 
-/** حالة الأدمن: كل التفاصيل (أكواد، محافظ، أرباح/خسائر). */
+/** حالة المقدّم/الأدمن: كل التفاصيل (الأكواد، السؤال الصحيح، من أجاب، النقاط). */
 function adminState(comp) {
   if (!comp) return { active: false };
-  return Object.assign({ active: true }, baseMeta(comp), {
+  const q = Competition.currentQuestion(comp);
+  const out = Object.assign({ active: true }, baseMeta(comp), {
     paused: comp._paused === true,
-    initialCapital: comp.initialCapital,
-    stocks: comp.stocks.map((s) => ({
-      id: s.id,
-      name: s.name,
-      price: s.price,
-      prevPrice: s.prevPrice,
-      startPrice: s.startPrice,
-      direction: s.direction,
-      lastChangePct: s.lastChangePct,
-      flatStreak: s.flatStreak,
-      manualChanges: s.manualChanges,
+    defaultTimeSec: comp.defaultTimeSec,
+    defaultPoints: comp.defaultPoints,
+    questions: comp.questions.map((qq, i) => ({
+      id: qq.id,
+      index: i,
+      text: qq.text,
+      options: qq.options.slice(),
+      correctIndex: qq.correctIndex,
+      category: qq.category,
+      timeLimitSec: qq.timeLimitSec,
+      points: qq.points,
     })),
     groups: Competition.groupsSummary(comp),
   });
+
+  if (q) {
+    const { tally, answered } = Competition.optionTally(comp, q);
+    out.current = {
+      id: q.id,
+      text: q.text,
+      category: q.category,
+      options: q.options.slice(),
+      correctIndex: q.correctIndex,
+      timeLimitSec: q.timeLimitSec,
+      points: q.points,
+      tally,
+      answered,
+      total: comp.groups.length,
+    };
+  } else {
+    out.current = null;
+  }
+  return out;
 }
 
 /**
- * حالة المتسابق: اسم المجموعة + النقد فقط + الأسهم + كميات ما يملكه (لأجل البيع).
- * لا تُرسل القيمة السوقية للمحفظة ولا إجمالي الثروة إطلاقًا.
+ * حالة جوال المجموعة: الخيارات كأزرار + حالة إجابتها + نتيجتها بعد الكشف.
  */
 function playerState(comp, group) {
   if (!comp || !group) return { active: false };
-  return Object.assign({ active: true }, baseMeta(comp), {
-    tradingOpen: comp.roundState === 'open' && comp._paused !== true,
-    group: {
-      id: group.id,
-      name: group.name,
-      cash: group.cash, // النقد فقط
-    },
-    // الأسهم مع كمية ما يملكه المتسابق (عدد فقط، بدون قيمة سوقية)
-    stocks: comp.stocks.map((s) =>
-      Object.assign(publicStock(s), { owned: group.holdings[s.id] || 0 })
-    ),
+  const q = Competition.currentQuestion(comp);
+  const leaderboard = Competition.groupsSummary(comp);
+  const me = leaderboard.find((r) => r.id === group.id) || { rank: 0, score: group.score || 0 };
+
+  const out = Object.assign({ active: true }, baseMeta(comp), {
+    group: { id: group.id, name: group.name, score: me.score, rank: me.rank, streak: group.streak || 0 },
+    groupCount: comp.groups.length,
   });
+
+  if (q) {
+    const revealed = comp.questionState === 'revealed';
+    const myAnswer = group.answers[q.id] || null;
+    out.question = {
+      text: q.text,
+      category: q.category,
+      options: publicOptions(q),
+      timeLimitSec: q.timeLimitSec,
+      answered: !!myAnswer,
+      myOption: myAnswer ? myAnswer.optionIndex : null,
+      // نتيجتي تظهر بعد الكشف فقط
+      correctIndex: revealed ? q.correctIndex : null,
+      myCorrect: revealed && myAnswer ? myAnswer.correct : null,
+      myAwarded: revealed && myAnswer ? myAnswer.awarded : 0,
+    };
+  } else {
+    out.question = null;
+  }
+  return out;
 }
 
-module.exports = { publicStock, displayState, adminState, playerState };
+module.exports = { displayState, adminState, playerState };

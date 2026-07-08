@@ -1,5 +1,5 @@
 /* ============================================================
-   بورصة رواحل — نظام تصميم مشترك
+   مسابقة الأسئلة — نظام تصميم مشترك
    ثيم فاتح بروح المسابقات والفعاليات (Light / Festive / RTL)
    ============================================================ */
 :root {
@@ -147,6 +147,13 @@ label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 
 .hidden { display: none !important; }
 .flash { animation: flash .55s ease; }
 @keyframes flash { 0% { background: rgba(245,165,36,.30); } 100% { background: transparent; } }
+
+/* ---------- ألوان خيارات الأسئلة (نمط كلك/كاهوت) ---------- */
+.opt-0 { --opt: #e23a4c; }
+.opt-1 { --opt: #2f7bf5; }
+.opt-2 { --opt: #f5a524; }
+.opt-3 { --opt: #12a869; }
+.opt-shape { display: inline-flex; align-items: center; justify-content: center; font-weight: 900; }
 
 /* شريط تمرير رفيع */
 ::-webkit-scrollbar { width: 9px; height: 9px; }

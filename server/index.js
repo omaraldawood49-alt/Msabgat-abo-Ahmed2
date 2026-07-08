@@ -22,15 +22,18 @@ const io = new Server(server, { cors: { origin: true } });
 // محرّك اللعبة (مصدر الحقيقة الوحيد)
 const engine = new GameEngine();
 
-// استعادة منافسة محفوظة إن وُجدت
+// استعادة مسابقة محفوظة إن وُجدت (مع تجاهل اللقطات القديمة غير المتوافقة)
 const saved = persist.load();
-if (saved) {
+if (saved && Array.isArray(saved.questions) && Array.isArray(saved.groups)) {
   try {
     engine.loadCompetition(saved);
-    console.log(`[boot] تم استعادة منافسة محفوظة: «${saved.name}» (الجولة ${saved.currentRound}/${saved.rounds})`);
+    console.log(`[boot] تم استعادة مسابقة محفوظة: «${saved.name}» (${saved.questions.length} سؤالًا)`);
   } catch (err) {
-    console.error('[boot] تعذّر استعادة المنافسة المحفوظة:', err.message);
+    console.error('[boot] تعذّر استعادة المسابقة المحفوظة:', err.message);
   }
+} else if (saved) {
+  console.warn('[boot] لقطة محفوظة غير متوافقة — تم تجاهلها.');
+  persist.clear();
 }
 
 // REST + Socket.IO
@@ -51,12 +54,12 @@ app.get('/player', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'player', 'i
 
 server.listen(PORT, () => {
   console.log('==================================================');
-  console.log('  بورصة رواحل — Educational Stock Market');
+  console.log('  مسابقة الأسئلة — Quiz Game (كلك)');
   console.log('==================================================');
   console.log(`  الخادم يعمل على المنفذ: ${PORT}`);
   console.log(`  شاشة العرض:   http://localhost:${PORT}/display`);
-  console.log(`  لوحة الأدمن:  http://localhost:${PORT}/admin   (الرمز: ${ADMIN_PIN})`);
-  console.log(`  المتسابق:     http://localhost:${PORT}/player`);
+  console.log(`  شاشة المقدّم: http://localhost:${PORT}/admin   (الرمز: ${ADMIN_PIN})`);
+  console.log(`  جوال المجموعة: http://localhost:${PORT}/player`);
   console.log('==================================================');
   if (ADMIN_PIN === '1234') {
     console.log('  ⚠️  تحذير: رمز الأدمن الافتراضي 1234 — غيّره عبر متغير البيئة ADMIN_PIN');

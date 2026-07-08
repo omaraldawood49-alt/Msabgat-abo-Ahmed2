@@ -1,7 +1,7 @@
 {
-  "name": "msabgat-alashum",
+  "name": "msabgat-asila",
   "version": "1.0.0",
-  "description": "بورصة رواحل - Educational Stock Market Competition Game",
+  "description": "مسابقة الأسئلة - Team Quiz Game (Kahoot/كلك style) with display, host & player screens",
   "main": "server/index.js",
   "type": "commonjs",
   "scripts": {

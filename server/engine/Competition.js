@@ -1,7 +1,7 @@
 'use strict';
 
-const { SEED_STOCKS } = require('./seedStocks');
-const { round2 } = require('./pricing');
+const { SEED_QUESTIONS } = require('./seedQuestions');
+const { clampInt } = require('./scoring');
 
 let _seq = 1;
 function uid(prefix) {
@@ -11,7 +11,7 @@ function uid(prefix) {
 
 // كود دخول قصير سهل الإدخال (بدون أحرف ملتبسة مثل O/0/I/1)
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-function makeCode(len = 5) {
+function makeCode(len = 4) {
   let s = '';
   for (let i = 0; i < len; i += 1) {
     s += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
@@ -19,56 +19,75 @@ function makeCode(len = 5) {
   return s;
 }
 
-function makeStock(name, price) {
+const MIN_OPTIONS = 2;
+const MAX_OPTIONS = 4;
+
+/** ينظّف خيارات سؤال ويضبط رقم الخيار الصحيح ضمن الحدود. */
+function sanitizeOptions(options, correctIndex) {
+  let opts = (Array.isArray(options) ? options : [])
+    .map((o) => String(o == null ? '' : o).trim())
+    .filter((o) => o.length > 0)
+    .slice(0, MAX_OPTIONS);
+  while (opts.length < MIN_OPTIONS) opts.push(`خيار ${opts.length + 1}`);
+  let ci = clampInt(correctIndex, 0, opts.length - 1, 0);
+  return { options: opts, correctIndex: ci };
+}
+
+function makeQuestion(fields = {}, defaults = {}) {
+  const { options, correctIndex } = sanitizeOptions(
+    fields.options && fields.options.length ? fields.options : ['', '', '', ''],
+    fields.correctIndex
+  );
   return {
-    id: uid('stk'),
-    name,
-    startPrice: round2(price),
-    price: round2(price),
-    prevPrice: round2(price),
-    direction: 'flat',
-    lastChangePct: 0,
-    flatStreak: 0,
-    // نِسَب التغير اليدوية لأول 10 جولات (النمط اليدوي) — تبدأ أصفارًا
-    manualChanges: new Array(10).fill(0),
+    id: uid('q'),
+    text: String(fields.text || 'سؤال جديد').trim(),
+    options,
+    correctIndex,
+    category: String(fields.category || '').trim(),
+    timeLimitSec: clampInt(fields.timeLimitSec, 5, 300, defaults.defaultTimeSec || 20),
+    points: clampInt(fields.points, 0, 100000, defaults.defaultPoints || 1000),
   };
 }
 
-function makeGroup(name, initialCapital, existingCodes = new Set()) {
+function makeGroup(name, existingCodes = new Set()) {
   let code = makeCode();
   while (existingCodes.has(code)) code = makeCode();
   return {
     id: uid('grp'),
     name,
     code,
-    initialCapital: round2(initialCapital),
-    cash: round2(initialCapital),
-    holdings: {}, // { stockId: qty }
+    score: 0,
+    streak: 0,
+    answers: {}, // { [questionId]: { optionIndex, atTimeLeft, correct, awarded } }
+    joinedAt: Date.now(),
   };
 }
 
 /**
- * ينشئ منافسة جديدة بالإعدادات المُمرّرة.
+ * ينشئ مسابقة أسئلة جديدة بالإعدادات المُمرّرة.
  */
 function createCompetition(opts = {}) {
   const {
-    name = 'بورصة رواحل',
-    rounds = 10,
-    roundDurationSec = 90,
+    name = 'مسابقة الأسئلة',
+    defaultTimeSec = 20,
+    defaultPoints = 1000,
+    speedBonus = true,
     groupCount = 4,
-    initialCapital = 100000,
-    stockCount = SEED_STOCKS.length,
-    pricingMode = 'auto',
+    useSeed = true,
+    questionCount = SEED_QUESTIONS.length,
   } = opts;
 
-  const stocks = SEED_STOCKS.slice(0, Math.max(1, Math.min(stockCount, SEED_STOCKS.length))).map(
-    (s) => makeStock(s.name, s.price)
-  );
+  const defaults = { defaultTimeSec, defaultPoints };
+  const questions = useSeed
+    ? SEED_QUESTIONS.slice(0, Math.max(1, Math.min(questionCount, SEED_QUESTIONS.length))).map(
+        (q) => makeQuestion(q, defaults)
+      )
+    : [];
 
   const codes = new Set();
   const groups = [];
   for (let i = 1; i <= groupCount; i += 1) {
-    const g = makeGroup(`المجموعة ${i}`, initialCapital, codes);
+    const g = makeGroup(`المجموعة ${i}`, codes);
     codes.add(g.code);
     groups.push(g);
   }
@@ -76,33 +95,26 @@ function createCompetition(opts = {}) {
   return {
     id: uid('cmp'),
     name,
-    rounds,
-    roundDurationSec,
-    initialCapital: round2(initialCapital),
-    pricingMode, // 'auto' | 'manual'
-    autoConfig: null, // يمكن تخصيصه لاحقًا
-    stocks,
+    defaultTimeSec: clampInt(defaultTimeSec, 5, 300, 20),
+    defaultPoints: clampInt(defaultPoints, 0, 100000, 1000),
+    speedBonus: speedBonus !== false,
+    questions,
     groups,
 
     // حالة التشغيل
     status: 'setup', // setup | running | finished
-    currentRound: 0, // 0 = لم تبدأ
-    roundState: 'idle', // idle | open | closed | transition
+    currentIndex: -1, // -1 = لم تبدأ؛ وإلا فهرس السؤال الحالي
+    questionState: 'idle', // idle | open | revealed
     timeLeft: 0,
 
-    // تجميع تدفّق التداول للجولة الحالية (للنمط التلقائي): { stockId: netQty }
-    roundFlow: {},
-
-    news: ['مرحبًا بكم في بورصة رواحل — استعدوا لبدء التداول!'],
-    lastMoves: [],
     createdAt: Date.now(),
   };
 }
 
-// -------------------- عمليات مساعدة على المنافسة --------------------
+// -------------------- عمليات مساعدة --------------------
 
-function findStock(comp, stockId) {
-  return comp.stocks.find((s) => s.id === stockId) || null;
+function findQuestion(comp, questionId) {
+  return comp.questions.find((q) => q.id === questionId) || null;
 }
 
 function findGroup(comp, groupId) {
@@ -115,43 +127,38 @@ function findGroupByCode(comp, code) {
   return comp.groups.find((g) => g.code === norm) || null;
 }
 
-/** القيمة السوقية لمحفظة مجموعة (مجموع الكميات × الأسعار الحالية). */
-function portfolioValue(comp, group) {
-  let total = 0;
-  for (const [stockId, qty] of Object.entries(group.holdings || {})) {
-    const stock = findStock(comp, stockId);
-    if (stock && qty > 0) total += stock.price * qty;
-  }
-  return round2(total);
+/** السؤال الحالي (أو null إذا لم تبدأ/انتهت). */
+function currentQuestion(comp) {
+  if (!comp || comp.currentIndex < 0 || comp.currentIndex >= comp.questions.length) return null;
+  return comp.questions[comp.currentIndex];
 }
 
-/** إجمالي الثروة = النقد + القيمة السوقية للمحفظة. */
-function totalWealth(comp, group) {
-  return round2(group.cash + portfolioValue(comp, group));
+/** توزيع عدد الإجابات على كل خيار للسؤال المُمرَّر. */
+function optionTally(comp, question) {
+  const tally = new Array(question.options.length).fill(0);
+  let answered = 0;
+  for (const g of comp.groups) {
+    const a = g.answers[question.id];
+    if (a && a.optionIndex != null && a.optionIndex >= 0 && a.optionIndex < tally.length) {
+      tally[a.optionIndex] += 1;
+      answered += 1;
+    }
+  }
+  return { tally, answered };
 }
 
 /**
- * ملخّص كامل لكل المجموعات (للأدمن فقط) مع الترتيب والأرباح/الخسائر.
+ * ملخّص المجموعات مرتّبًا بالنقاط تنازليًا مع رقم الترتيب.
  */
 function groupsSummary(comp) {
-  const rows = comp.groups.map((g) => {
-    const pv = portfolioValue(comp, g);
-    const wealth = round2(g.cash + pv);
-    const pnl = round2(wealth - g.initialCapital);
-    const pnlPct = g.initialCapital > 0 ? round2((pnl / g.initialCapital) * 100) : 0;
-    return {
-      id: g.id,
-      name: g.name,
-      code: g.code,
-      cash: round2(g.cash),
-      portfolioValue: pv,
-      wealth,
-      pnl,
-      pnlPct,
-      holdings: Object.assign({}, g.holdings),
-    };
-  });
-  rows.sort((a, b) => b.wealth - a.wealth);
+  const rows = comp.groups.map((g) => ({
+    id: g.id,
+    name: g.name,
+    code: g.code,
+    score: g.score || 0,
+    streak: g.streak || 0,
+  }));
+  rows.sort((a, b) => b.score - a.score);
   rows.forEach((r, i) => {
     r.rank = i + 1;
   });
@@ -161,13 +168,16 @@ function groupsSummary(comp) {
 module.exports = {
   uid,
   makeCode,
-  makeStock,
+  makeQuestion,
   makeGroup,
+  sanitizeOptions,
   createCompetition,
-  findStock,
+  findQuestion,
   findGroup,
   findGroupByCode,
-  portfolioValue,
-  totalWealth,
+  currentQuestion,
+  optionTally,
   groupsSummary,
+  MIN_OPTIONS,
+  MAX_OPTIONS,
 };

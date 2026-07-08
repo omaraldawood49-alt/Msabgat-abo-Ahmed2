@@ -1,10 +1,12 @@
 (function () {
   'use strict';
-  var el = U.el, fmt = U.fmt, dirClass = U.dirClass, dirArrow = U.dirArrow;
+  var el = U.el, fmt = U.fmt;
+  var SHAPES = ['▲', '◆', '●', '■'];
 
   var socket = null;
   var lastState = null;
-  var qtyMemory = {}; // حفظ الكمية المُدخلة لكل سهم
+  var lastQKey = null;      // لتمييز سؤال جديد
+  var revealPlayed = false; // لتشغيل صوت الكشف مرة واحدة
 
   var joinScreen = document.getElementById('joinScreen');
   var gameScreen = document.getElementById('gameScreen');
@@ -18,21 +20,26 @@
     socket = io({ auth: { role: 'player', code: code } });
 
     socket.on('auth:ok', function () {
-      try { localStorage.setItem('sm_code', code); } catch (e) {}
+      try { localStorage.setItem('quiz_code', code); } catch (e) {}
       joinScreen.classList.add('hidden');
       gameScreen.classList.remove('hidden');
     });
     socket.on('auth:error', function (e) {
       joinErr.textContent = e.error || 'تعذّر الدخول';
       joinBtn.disabled = false;
+      try { localStorage.removeItem('quiz_code'); } catch (er) {}
     });
     socket.on('state', render);
     socket.on('tick', function (t) {
-      if (lastState) { lastState.timeLeft = t.timeLeft; updateStatus(lastState); }
+      if (lastState) { lastState.timeLeft = t.timeLeft; updateStatus(lastState); updateTimer(lastState); }
     });
-    socket.on('round:open', function () { Sound.roundStart(); });
-    socket.on('round:transition', function () { Sound.roundEnd(); });
-    socket.on('disconnect', function () { setBanner('انقطع الاتصال — تتم إعادة المحاولة...', true); });
+    socket.on('question:open', function () { Sound.roundStart(); });
+    socket.on('question:reveal', function () {
+      if (lastState && lastState.question && lastState.question.answered) {
+        (lastState.question.myCorrect ? Sound.correct : Sound.wrong)();
+      } else { Sound.reveal(); }
+    });
+    socket.on('disconnect', function () { });
   }
 
   function doJoin() {
@@ -47,7 +54,10 @@
 
   // كود من الرابط (QR) أو من الجلسة السابقة
   var urlCode = U.qs('code');
-  if (urlCode) { codeInput.value = urlCode.toUpperCase(); connect(urlCode.trim().toUpperCase()); }
+  var savedCode = null;
+  try { savedCode = localStorage.getItem('quiz_code'); } catch (e) {}
+  var initCode = urlCode || savedCode;
+  if (initCode) { codeInput.value = initCode.toUpperCase(); connect(initCode.trim().toUpperCase()); }
 
   // ---------- زر الصوت ----------
   var soundBtn = document.getElementById('soundBtn');
@@ -57,34 +67,34 @@
     soundBtn.textContent = on ? '🔊' : '🔇';
   });
 
-  // ---------- العرض ----------
+  // ---------- الحالة العلوية ----------
   function updateStatus(s) {
     var line = document.getElementById('statusLine');
     var txt = document.getElementById('statusText');
-    var info = document.getElementById('roundInfo');
-    var open = s.tradingOpen;
-    line.className = 'status-line ' + (open ? 'open' : 'closed');
-    if (s.status === 'finished') { txt.textContent = 'انتهت المنافسة'; }
-    else if (s.status === 'setup' || s.currentRound === 0) { txt.textContent = 'بانتظار بدء المنافسة'; }
-    else if (open) { txt.textContent = 'التداول مفتوح'; }
-    else if (s.roundState === 'transition') { txt.textContent = 'تحديث السوق...'; }
-    else { txt.textContent = 'التداول مغلق'; }
-    if (s.currentRound > 0) {
-      info.textContent = 'جولة ' + s.currentRound + '/' + s.rounds + (open ? '  •  ⏱ ' + s.timeLeft + 'ث' : '');
+    var open = s.question && s.questionState === 'open';
+    line.className = 'status-line ' + (open ? 'open' : '');
+    if (s.status === 'finished') txt.textContent = 'انتهت المسابقة';
+    else if (s.currentIndex < 0) txt.textContent = 'بانتظار البدء';
+    else if (open) txt.textContent = 'الإجابة مفتوحة';
+    else if (s.questionState === 'revealed') txt.textContent = 'ظهرت الإجابة';
+    else txt.textContent = 'انتظر...';
+  }
+  function updateTimer(s) {
+    var info = document.getElementById('qInfo');
+    if (s.currentIndex >= 0 && s.question) {
+      info.textContent = 'سؤال ' + s.questionNumber + '/' + s.total +
+        (s.questionState === 'open' ? '  •  ⏱ ' + s.timeLeft + 'ث' : '');
     } else { info.textContent = ''; }
   }
 
-  function setBanner(msg, show) {
-    var b = document.getElementById('banner');
-    if (!show) { b.classList.add('hidden'); return; }
-    b.textContent = msg;
-    b.classList.remove('hidden');
-  }
-
+  // ---------- العرض ----------
   function render(s) {
+    var content = document.getElementById('content');
     if (!s || !s.active) {
-      setBanner('لا توجد منافسة نشطة حاليًا', true);
       document.getElementById('gName').textContent = '—';
+      content.innerHTML = '';
+      content.appendChild(el('div', { class: 'banner banner-wait' }, ['لا توجد مسابقة نشطة حاليًا']));
+      lastState = s;
       return;
     }
     var prev = lastState;
@@ -92,84 +102,113 @@
 
     document.getElementById('gName').textContent = s.group.name;
     document.getElementById('compName').textContent = s.name;
-    var cashEl = document.getElementById('gCash');
-    cashEl.textContent = fmt(s.group.cash);
-    if (prev && prev.group && prev.group.cash !== s.group.cash) {
-      cashEl.classList.remove('flash'); void cashEl.offsetWidth; cashEl.classList.add('flash');
+    var scoreEl = document.getElementById('gScore');
+    scoreEl.textContent = fmt(s.group.score);
+    if (prev && prev.group && prev.group.score !== s.group.score) {
+      scoreEl.classList.remove('flash'); void scoreEl.offsetWidth; scoreEl.classList.add('flash');
     }
-
     updateStatus(s);
+    updateTimer(s);
 
-    if (s.status === 'finished') setBanner('انتهت المنافسة — شكرًا لمشاركتكم! 🏆', true);
-    else if (!s.tradingOpen) setBanner(s.roundState === 'transition' ? '🔄 يتم تحديث الأسعار...' : '⏸ التداول مغلق — انتظر بدء الجولة', true);
-    else setBanner('', false);
+    // تمييز سؤال جديد لإعادة بناء الأزرار
+    var qKey = s.currentIndex + ':' + s.questionState;
+    var isNewQuestion = !prev || prev.currentIndex !== s.currentIndex;
+    if (isNewQuestion) revealPlayed = false;
 
-    renderStocks(s);
+    if (s.status === 'finished') { renderFinished(s); return; }
+    if (s.currentIndex < 0 || !s.question) { renderWaiting(s, 'بانتظار بدء المسابقة', '⏳'); return; }
+
+    renderQuestion(s, isNewQuestion);
   }
 
-  var rowMap = {}; // stockId -> { card, price, chip, owned, buy, sell, qtyInput }
+  function renderWaiting(s, title, emoji) {
+    var content = document.getElementById('content');
+    content.innerHTML = '';
+    content.appendChild(el('div', { class: 'waitscreen' }, [
+      el('div', { class: 'emoji' }, [emoji]),
+      el('h2', {}, [title]),
+      el('div', { class: 'muted' }, ['استعدّوا للسؤال التالي!']),
+      el('div', { class: 'rankpill' }, ['ترتيبك: #' + (s.group.rank || '—') + '  •  ' + fmt(s.group.score) + ' نقطة'])
+    ]));
+  }
 
-  function renderStocks(s) {
-    var list = document.getElementById('stockList');
-    var open = s.tradingOpen;
+  function renderFinished(s) {
+    var content = document.getElementById('content');
+    content.innerHTML = '';
+    var rank = s.group.rank || '—';
+    var medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🎉';
+    content.appendChild(el('div', { class: 'waitscreen' }, [
+      el('div', { class: 'emoji' }, [medal]),
+      el('h2', {}, ['انتهت المسابقة!']),
+      el('div', { class: 'rankpill' }, ['المركز #' + rank + '  •  ' + fmt(s.group.score) + ' نقطة'])
+    ]));
+  }
 
-    // إعادة البناء فقط عند تغيّر مجموعة الأسهم (وإلا تحديث في المكان لتفادي القفز)
-    var ids = s.stocks.map(function (x) { return x.id; }).join(',');
-    if (list.dataset.ids !== ids) {
-      list.innerHTML = ''; rowMap = {};
-      s.stocks.forEach(function (st) { list.appendChild(buildCard(st)); });
-      list.dataset.ids = ids;
+  var optBtns = [];
+  function renderQuestion(s, rebuild) {
+    var q = s.question;
+    var content = document.getElementById('content');
+    var revealed = s.questionState === 'revealed';
+    var open = s.questionState === 'open';
+
+    // بناء الهيكل عند سؤال جديد
+    if (rebuild || !content.querySelector('.opts')) {
+      content.innerHTML = '';
+      content.appendChild(el('div', { class: 'panel qcard' }, [
+        q.category ? el('div', { class: 'qcat' }, [q.category]) : null,
+        el('div', { class: 'qtext' }, [q.text])
+      ]));
+      var opts = el('div', { class: 'opts' + (q.options.length <= 2 ? ' cols1' : '') });
+      optBtns = [];
+      q.options.forEach(function (o, i) {
+        var btn = el('button', { class: 'opt-btn opt-' + i, onclick: function () { answer(i); } }, [
+          el('span', { class: 'shape' }, [SHAPES[i] || '●']),
+          el('span', { class: 'otext' }, [o.text])
+        ]);
+        optBtns.push(btn);
+        opts.appendChild(btn);
+      });
+      content.appendChild(opts);
+      content.appendChild(el('div', { class: 'fbslot' }));
     }
 
-    s.stocks.forEach(function (st) {
-      var r = rowMap[st.id];
-      if (!r) return;
-      var dc = dirClass(st.direction);
-      var prevText = r.price.textContent;
-      r.price.textContent = fmt(st.price);
-      r.price.className = 'p mono ' + dc;
-      r.chip.className = 'chip chip-' + dc;
-      r.chip.textContent = dirArrow(st.direction) + ' ' + U.pct(st.lastChangePct);
-      r.owned.textContent = 'تملك: ' + (st.owned || 0) + ' سهم';
-      r.buy.disabled = !open;
-      r.sell.disabled = !(open && st.owned > 0);
-      if (prevText !== r.price.textContent && prevText !== '0') {
-        r.price.classList.remove('flash'); void r.price.offsetWidth; r.price.classList.add('flash');
+    var myOption = q.myOption;
+    optBtns.forEach(function (btn, i) {
+      btn.classList.remove('chosen', 'dimmed', 'correct');
+      btn.disabled = !open || q.answered;
+      if (q.answered && i === myOption) btn.classList.add('chosen');
+      if (revealed) {
+        btn.disabled = true;
+        if (i === q.correctIndex) btn.classList.add('correct');
+        else btn.classList.add('dimmed');
+        if (i === myOption && i === q.correctIndex) btn.classList.remove('dimmed');
       }
     });
+
+    // منطقة التغذية الراجعة
+    var slot = content.querySelector('.fbslot');
+    slot.innerHTML = '';
+    if (revealed && q.answered) {
+      slot.appendChild(el('div', { class: 'feedback ' + (q.myCorrect ? 'ok' : 'no') }, [
+        el('span', { class: 'big' }, [q.myCorrect ? '✅ إجابة صحيحة!' : '❌ إجابة خاطئة']),
+        q.myCorrect ? el('span', { class: 'pts' }, ['+' + fmt(q.myAwarded) + ' نقطة']) : null
+      ]));
+    } else if (revealed && !q.answered) {
+      slot.appendChild(el('div', { class: 'banner banner-wait' }, ['لم تسجّلوا إجابة على هذا السؤال']));
+    } else if (open && q.answered) {
+      slot.appendChild(el('div', { class: 'banner banner-wait' }, ['✔ تم تسجيل إجابتكم — بانتظار البقية']));
+    }
   }
 
-  function buildCard(st) {
-    var qty = qtyMemory[st.id] || 1;
-    var qtyInput = el('input', {
-      class: 'qty-input', type: 'number', min: '1', step: '1', value: qty, inputmode: 'numeric',
-      oninput: function () { qtyMemory[st.id] = Math.max(1, parseInt(this.value || '1', 10)); }
-    });
-    var buyBtn = el('button', { class: 'btn btn-buy btn-sm', text: 'شراء', onclick: function () { trade(st.id, 'buy', qtyInput.value); } });
-    var sellBtn = el('button', { class: 'btn btn-sell btn-sm', text: 'بيع', onclick: function () { trade(st.id, 'sell', qtyInput.value); } });
-    var priceEl = el('div', { class: 'p mono' }, ['0']);
-    var chipEl = el('div', { class: 'chip chip-flat', style: 'margin-top:4px;' }, ['＝']);
-    var ownedEl = el('div', { class: 'sc-owned' }, ['تملك: 0 سهم']);
-    var card = el('div', { class: 'panel stock-card' }, [
-      el('div', { class: 'sc-top' }, [
-        el('div', {}, [ el('div', { class: 'sc-name' }, [st.name]), ownedEl ]),
-        el('div', { class: 'sc-price' }, [priceEl, chipEl])
-      ]),
-      el('div', { class: 'sc-actions' }, [qtyInput, buyBtn, sellBtn])
-    ]);
-    rowMap[st.id] = { card: card, price: priceEl, chip: chipEl, owned: ownedEl, buy: buyBtn, sell: sellBtn, qtyInput: qtyInput };
-    return card;
-  }
-
-  function trade(stockId, side, qty) {
-    var q = Math.max(1, parseInt(qty || '1', 10));
-    socket.emit('player:trade', { stockId: stockId, side: side, qty: q }, function (res) {
+  function answer(optionIndex) {
+    if (!socket) return;
+    socket.emit('player:answer', { optionIndex: optionIndex }, function (res) {
       if (res && res.ok) {
-        (side === 'buy' ? Sound.buy : Sound.sell)();
-        U.toast(side === 'buy' ? 'تم الشراء ✅' : 'تم البيع ✅', 'ok');
+        Sound.lockIn();
+        U.toast('تم تسجيل إجابتكم ✅', 'ok');
       } else {
         Sound.error();
-        U.toast((res && res.error) || 'فشلت العملية', 'err');
+        U.toast((res && res.error) || 'تعذّر الإرسال', 'err');
       }
     });
   }

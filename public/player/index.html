@@ -3,39 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>المتسابق — بورصة رواحل</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E" />
+  <title>المجموعة — مسابقة الأسئلة</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9D%93%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/shared/theme.css" />
   <style>
-    .wrap { max-width: 560px; margin: 0 auto; padding: 0 12px 90px; }
+    .wrap { max-width: 560px; margin: 0 auto; padding: 0 12px 40px; }
     /* شاشة الدخول */
     .join { max-width: 380px; margin: 60px auto; padding: 28px 24px; text-align: center; }
     .join h1 { font-size: 24px; }
     .code-input { text-align: center; letter-spacing: 8px; font-size: 26px; font-weight: 800; text-transform: uppercase; }
     /* رأس ثابت */
-    .phead { position: sticky; top: 0; z-index: 20; background: var(--fest); color: #fff; border-bottom: none; padding: 12px 14px; box-shadow: 0 6px 18px rgba(80,60,180,.22); }
+    .phead { position: sticky; top: 0; z-index: 20; background: var(--fest); color: #fff; padding: 12px 14px; box-shadow: 0 6px 18px rgba(80,60,180,.22); }
     .phead-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .gname { font-weight: 800; font-size: 17px; color: #fff; }
     .phead .muted { color: rgba(255,255,255,.8); }
-    .cash-box { text-align: left; }
-    .cash-box .lbl { font-size: 11px; color: rgba(255,255,255,.8); }
-    .cash-box .val { font-size: 20px; font-weight: 800; color: #ffe08a; }
-    .status-line { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 13px; color: rgba(255,255,255,.82); }
-    .live-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-inline-end: 5px; }
-    .open .live-dot { background: var(--up); box-shadow: 0 0 8px var(--up); animation: pulse 1.4s infinite; }
-    .closed .live-dot { background: var(--down); }
+    .score-box { text-align: left; }
+    .score-box .lbl { font-size: 11px; color: rgba(255,255,255,.8); }
+    .score-box .val { font-size: 22px; font-weight: 800; color: #ffe08a; }
+    .status-line { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 13px; color: rgba(255,255,255,.85); }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-inline-end: 5px; background: rgba(255,255,255,.5); }
+    .open .live-dot { background: #3dffb0; box-shadow: 0 0 8px #3dffb0; animation: pulse 1.4s infinite; }
     @keyframes pulse { 50% { opacity: .35; } }
 
-    .stock-card { padding: 13px 14px; margin-top: 10px; }
-    .sc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-    .sc-name { font-weight: 700; font-size: 16px; }
-    .sc-owned { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
-    .sc-price { text-align: left; }
-    .sc-price .p { font-size: 19px; font-weight: 800; }
-    .sc-actions { display: grid; grid-template-columns: 74px 1fr 1fr; gap: 8px; margin-top: 11px; align-items: center; }
-    .qty-input { text-align: center; padding: 9px 4px; font-weight: 700; }
-    .banner { text-align: center; padding: 10px; border-radius: 10px; margin: 12px 0; font-weight: 700; }
+    .qcard { margin-top: 14px; padding: 16px; text-align: center; }
+    .qcard .qcat { font-size: 12px; color: var(--text-dim); font-weight: 700; }
+    .qcard .qtext { font-size: 19px; font-weight: 800; margin: 6px 0 4px; line-height: 1.4; }
+    .qcard .qtimer { font-size: 15px; font-weight: 800; color: var(--accent-2); }
+
+    .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+    .opts.cols1 { grid-template-columns: 1fr; }
+    .opt-btn {
+      border: none; border-radius: 16px; color: #fff; background: var(--opt);
+      padding: 20px 14px; font-size: 18px; font-weight: 800; font-family: inherit;
+      display: flex; align-items: center; gap: 12px; text-align: start; cursor: pointer;
+      min-height: 84px; box-shadow: 0 6px 16px rgba(0,0,0,.16); transition: transform .08s, opacity .2s, filter .2s;
+    }
+    .opt-btn .shape { font-size: 22px; flex: 0 0 auto; }
+    .opt-btn .otext { flex: 1; }
+    .opt-btn:active { transform: scale(.97); }
+    .opt-btn:disabled { cursor: default; }
+    .opt-btn.chosen { outline: 4px solid #fff; }
+    .opt-btn.dimmed { opacity: .4; filter: grayscale(.4); }
+    .opt-btn.correct { outline: 4px solid #063; box-shadow: 0 0 22px rgba(45,229,157,.6); }
+
+    .banner { text-align: center; padding: 14px; border-radius: 12px; margin: 16px 0; font-weight: 700; }
     .banner-wait { background: var(--flat-bg); color: var(--flat); }
+    .feedback { text-align: center; padding: 20px; border-radius: 16px; margin-top: 16px; font-weight: 800; }
+    .feedback.ok { background: var(--up-bg); color: var(--up); }
+    .feedback.no { background: var(--down-bg); color: var(--down); }
+    .feedback .big { font-size: 30px; display: block; }
+    .feedback .pts { font-size: 20px; color: var(--accent); margin-top: 6px; }
+    .waitscreen { text-align: center; padding: 34px 18px; }
+    .waitscreen .emoji { font-size: 52px; }
+    .waitscreen h2 { font-size: 22px; margin: 8px 0; }
+    .rankpill { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 6px 16px; font-weight: 800; margin-top: 10px; }
     .sound-toggle { background: transparent; border: none; font-size: 20px; cursor: pointer; }
   </style>
 </head>
@@ -43,18 +64,18 @@
   <!-- شاشة الدخول -->
   <div id="joinScreen">
     <div class="panel join">
-      <div class="brand center" style="justify-content:center; margin-bottom:6px;"><span class="dot"></span> بورصة رواحل</div>
-      <h1>دخول المتسابق</h1>
+      <div class="brand center" style="justify-content:center; margin-bottom:6px;"><span class="dot"></span> مسابقة الأسئلة</div>
+      <h1>دخول المجموعة</h1>
       <p class="muted" style="margin-top:-6px;">أدخل كود المجموعة أو امسح رمز QR</p>
       <div class="field" style="margin-top:18px;">
-        <input id="codeInput" class="code-input" maxlength="6" placeholder="• • • • •" autocomplete="off" />
+        <input id="codeInput" class="code-input" maxlength="6" placeholder="• • • •" autocomplete="off" />
       </div>
       <button id="joinBtn" class="btn btn-accent btn-block">دخول</button>
       <p id="joinErr" class="down" style="min-height:18px; margin-top:12px; font-size:14px;"></p>
     </div>
   </div>
 
-  <!-- شاشة التداول -->
+  <!-- شاشة اللعب -->
   <div id="gameScreen" class="hidden">
     <div class="phead">
       <div class="phead-row">
@@ -62,23 +83,22 @@
           <div class="gname" id="gName">—</div>
           <div class="muted" id="compName" style="font-size:12px;"></div>
         </div>
-        <div style="display:flex; align-items:center; gap:6px;">
+        <div style="display:flex; align-items:center; gap:8px;">
           <button id="soundBtn" class="sound-toggle" title="الصوت">🔊</button>
-          <div class="cash-box">
-            <div class="lbl">النقد المتاح</div>
-            <div class="val mono" id="gCash">0</div>
+          <div class="score-box">
+            <div class="lbl">نقاطك</div>
+            <div class="val mono" id="gScore">0</div>
           </div>
         </div>
       </div>
       <div class="status-line" id="statusLine">
         <span><span class="live-dot"></span><span id="statusText">بانتظار البدء</span></span>
-        <span id="roundInfo" class="mono"></span>
+        <span id="qInfo" class="mono"></span>
       </div>
     </div>
 
     <div class="wrap">
-      <div id="banner" class="banner banner-wait hidden"></div>
-      <div id="stockList"></div>
+      <div id="content"></div>
     </div>
   </div>
 

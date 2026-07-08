@@ -46,6 +46,11 @@
       [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.28, 'triangle', 0.16, i * 0.16));
     },
     error() { tone(200, 0.18, 'sawtooth', 0.12); },
+    // مؤثرات لعبة الأسئلة
+    lockIn() { tone(660, 0.09, 'triangle', 0.13); tone(880, 0.12, 'triangle', 0.1, 0.06); },
+    correct() { [659, 880, 1174].forEach((f, i) => tone(f, 0.22, 'triangle', 0.15, i * 0.1)); },
+    wrong() { tone(311, 0.22, 'sawtooth', 0.13); tone(233, 0.3, 'sawtooth', 0.12, 0.16); },
+    reveal() { tone(880, 0.14, 'triangle', 0.13); tone(587, 0.2, 'triangle', 0.11, 0.1); },
   };
 
   global.Sound = Sound;

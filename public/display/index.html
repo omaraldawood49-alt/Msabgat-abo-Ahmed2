@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>شاشة العرض — بورصة رواحل</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E" />
+  <title>شاشة العرض — مسابقة الأسئلة</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9D%93%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/shared/theme.css" />
   <link rel="stylesheet" href="/display/display.css" />
 </head>
@@ -12,7 +12,7 @@
   <!-- طبقة البدء (لتفعيل الصوت) -->
   <div id="startOverlay" class="overlay">
     <div class="overlay-inner">
-      <div class="brand" style="font-size:30px; justify-content:center;"><span class="dot"></span> بورصة رواحل</div>
+      <div class="brand" style="font-size:30px; justify-content:center;"><span class="dot"></span> مسابقة الأسئلة</div>
       <p class="muted">شاشة العرض الرئيسية</p>
       <button id="startBtn" class="btn btn-accent" style="font-size:18px; padding:14px 34px; margin-top:14px;">▶ بدء العرض</button>
     </div>
@@ -21,13 +21,12 @@
   <!-- الرأس -->
   <header class="dhead">
     <div class="dhead-title">
-      <div class="brand"><span class="dot"></span> <span id="compName">بورصة رواحل</span></div>
+      <div class="brand"><span class="dot"></span> <span id="compName">مسابقة الأسئلة</span></div>
       <div class="market-status" id="marketStatus"><span class="live-dot"></span><span id="statusText">بانتظار البدء</span></div>
     </div>
     <div class="dhead-round">
-      <div class="lock-chip">🔒 يظهر ترتيب الفرق في الختام</div>
       <div class="round-box">
-        <div class="round-num">الجولة <span id="roundNum">—</span><span class="round-total" id="roundTotal"></span></div>
+        <div class="round-num">السؤال <span id="qNum">—</span><span class="round-total" id="qTotal"></span></div>
       </div>
       <div class="countdown">
         <svg viewBox="0 0 120 120" class="ring">
@@ -39,29 +38,36 @@
     </div>
   </header>
 
-  <!-- شبكة الأسهم الزجاجية -->
-  <main class="glass-main">
-    <div id="stockGrid" class="glass-grid"></div>
+  <main class="dmain">
+    <!-- الردهة: بانتظار البدء -->
+    <section id="lobby" class="lobby hidden">
+      <div class="lobby-card panel">
+        <div class="lobby-emoji">🎮</div>
+        <h1 id="lobbyTitle">بانتظار بدء المسابقة</h1>
+        <p class="muted">امسح رمز QR الخاص بمجموعتك أو أدخل الكود من جوالك</p>
+        <div class="lobby-join">افتح <b id="joinUrl">/player</b></div>
+        <div class="lobby-count"><span id="lobbyCount">0</span> مجموعة منضمّة</div>
+        <div id="lobbyGroups" class="lobby-groups"></div>
+      </div>
+    </section>
+
+    <!-- منصة السؤال -->
+    <section id="stage" class="stage hidden">
+      <div class="q-top">
+        <span id="qCategory" class="q-cat"></span>
+        <span id="qPoints" class="q-points"></span>
+      </div>
+      <div id="qText" class="q-text"></div>
+      <div class="q-answered" id="qAnswered"></div>
+      <div id="optGrid" class="opt-grid"></div>
+      <div id="revealBoard" class="reveal-board hidden"></div>
+    </section>
   </main>
-
-  <!-- شريط الأخبار -->
-  <footer class="newsbar">
-    <div class="news-label">أخبار السوق</div>
-    <div class="news-viewport"><div id="newsTrack" class="news-track"></div></div>
-  </footer>
-
-  <!-- طبقة الانتقال بين الجولات -->
-  <div id="transitionOverlay" class="overlay trans hidden">
-    <div class="trans-inner">
-      <div id="countBig" class="count-big"></div>
-      <div id="transMsg" class="trans-msg"></div>
-    </div>
-  </div>
 
   <!-- طبقة التتويج النهائية -->
   <div id="podiumOverlay" class="overlay hidden">
     <div class="podium-wrap">
-      <h1 class="podium-title">🏆 نتائج بورصة رواحل النهائية</h1>
+      <h1 class="podium-title">🏆 النتائج النهائية</h1>
       <div id="podium" class="podium"></div>
       <div id="podiumRest" class="podium-rest"></div>
     </div>

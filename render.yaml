@@ -1,15 +1,15 @@
-# Render Blueprint — نشر تلقائي لبورصة رواحل
+# Render Blueprint — نشر تلقائي لمسابقة الأسئلة
 # ارفع المشروع بضغطة واحدة: من render.com اختر New + → Blueprint → هذا المستودع.
 services:
   - type: web
-    name: msabgat-alashum
+    name: msabgat-asila
     runtime: node
     plan: free
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/config
     envVars:
-      # رمز دخول لوحة الأدمن — سيطلب منك Render إدخال قيمته عند الرفع.
+      # رمز دخول شاشة المقدّم — سيطلب منك Render إدخال قيمته عند الرفع.
       - key: ADMIN_PIN
         sync: false
       - key: NODE_VERSION

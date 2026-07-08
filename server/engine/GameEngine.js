@@ -2,29 +2,27 @@
 
 const EventEmitter = require('events');
 const Competition = require('./Competition');
-const { stepPrices, buildNews, round2 } = require('./pricing');
-
-const TRANSITION_MS = 4500; // مدة حركة الانتقال بين الجولات (3-2-1 + تحريك الأسعار)
+const { scoreAnswer } = require('./scoring');
 
 /**
- * محرّك اللعبة: يدير دورة حياة الجولات والمؤقّت والتداول.
+ * محرّك لعبة الأسئلة: يدير دورة حياة الأسئلة والمؤقّت واستقبال الإجابات وحساب النقاط.
  * مصدر الحقيقة الوحيد للحالة (server-authoritative).
  *
  * الأحداث المبثوثة:
- *  - 'state'            : تغيّر عام في الحالة (يستدعي إعادة البثّ)
- *  - 'tick'             : نبضة كل ثانية أثناء جولة مفتوحة { timeLeft }
- *  - 'round:open'       : بدء جولة جديدة { round }
- *  - 'round:transition' : انتهاء التداول وبدء تحديث السوق { round, moves, news }
- *  - 'competition:finished' : انتهاء المنافسة { podium }
- *  - 'trade'            : تنفيذ صفقة { groupId }
+ *  - 'state'               : تغيّر عام في الحالة (يستدعي إعادة البثّ)
+ *  - 'tick'                : نبضة كل ثانية أثناء سؤال مفتوح { timeLeft }
+ *  - 'question:open'       : فتح سؤال جديد { index }
+ *  - 'question:reveal'     : كشف الإجابة الصحيحة والنقاط { index, correctIndex }
+ *  - 'competition:finished': انتهاء المسابقة { standings, podium }
+ *  - 'answer'              : وصول إجابة من مجموعة { groupId }
  */
 class GameEngine extends EventEmitter {
   constructor() {
     super();
     this.comp = null;
     this._tickTimer = null;
-    this._transitionTimer = null;
     this.paused = false;
+    this.baseUrl = null;
   }
 
   _setPaused(v) {
@@ -32,7 +30,7 @@ class GameEngine extends EventEmitter {
     if (this.comp) this.comp._paused = v;
   }
 
-  // -------------------- إدارة المنافسة --------------------
+  // -------------------- إدارة المسابقة --------------------
 
   setCompetition(comp) {
     this._clearTimers();
@@ -48,42 +46,45 @@ class GameEngine extends EventEmitter {
   }
 
   loadCompetition(comp) {
-    // استعادة منافسة محفوظة مع إيقاف أي مؤقّت جارٍ (يستأنفها الأدمن يدويًا)
+    // استعادة مسابقة محفوظة مع إيقاف أي مؤقّت جارٍ (يستأنفها المقدّم يدويًا)
     this._clearTimers();
     this.comp = comp;
-    // كانت جولة مفتوحة عند الحفظ → نضعها في وضع الإيقاف المؤقت للأمان
-    this._setPaused(comp.roundState === 'open');
+    this._setPaused(comp.questionState === 'open');
     this.emit('state');
   }
 
   requireComp() {
-    if (!this.comp) throw new Error('لا توجد منافسة نشطة');
+    if (!this.comp) throw new Error('لا توجد مسابقة نشطة');
     return this.comp;
   }
 
-  // -------------------- دورة حياة الجولات --------------------
+  // -------------------- دورة حياة الأسئلة --------------------
 
   start() {
     const comp = this.requireComp();
-    if (comp.status === 'finished') throw new Error('انتهت المنافسة بالفعل');
-    if (comp.currentRound === 0) {
+    if (comp.status === 'finished') throw new Error('انتهت المسابقة بالفعل');
+    if (!comp.questions.length) throw new Error('أضِف سؤالًا واحدًا على الأقل قبل البدء');
+    if (comp.currentIndex < 0) {
       comp.status = 'running';
-      comp.currentRound = 1;
-      this._openRound();
+      comp.currentIndex = 0;
+      this._openQuestion();
     } else if (this.paused) {
       this.resume();
     }
     return comp;
   }
 
-  _openRound() {
+  _openQuestion() {
     const comp = this.comp;
-    comp.roundState = 'open';
-    comp.timeLeft = comp.roundDurationSec;
-    comp.roundFlow = {};
+    const q = Competition.currentQuestion(comp);
+    if (!q) return this._finish();
+    comp.status = 'running';
+    comp.questionState = 'open';
+    comp.timeLeft = q.timeLimitSec;
+    // مسح إجابات هذا السؤال (في حال أُعيد فتحه)
+    for (const g of comp.groups) delete g.answers[q.id];
     this._setPaused(false);
-    // تصفير اتجاهات الأسهم عند بداية جولة جديدة (تبقى الأسعار)
-    this.emit('round:open', { round: comp.currentRound });
+    this.emit('question:open', { index: comp.currentIndex });
     this.emit('state');
     this._startTicking();
   }
@@ -92,12 +93,12 @@ class GameEngine extends EventEmitter {
     this._clearTickTimer();
     this._tickTimer = setInterval(() => {
       const comp = this.comp;
-      if (!comp || comp.roundState !== 'open' || this.paused) return;
+      if (!comp || comp.questionState !== 'open' || this.paused) return;
       comp.timeLeft -= 1;
       if (comp.timeLeft <= 0) {
         comp.timeLeft = 0;
         this.emit('tick', { timeLeft: 0 });
-        this._closeRound();
+        this._revealQuestion();
       } else {
         this.emit('tick', { timeLeft: comp.timeLeft });
       }
@@ -106,7 +107,7 @@ class GameEngine extends EventEmitter {
 
   pause() {
     const comp = this.requireComp();
-    if (comp.roundState !== 'open') return comp;
+    if (comp.questionState !== 'open') return comp;
     this._setPaused(true);
     this.emit('state');
     return comp;
@@ -114,58 +115,58 @@ class GameEngine extends EventEmitter {
 
   resume() {
     const comp = this.requireComp();
-    if (comp.roundState !== 'open') return comp;
+    if (comp.questionState !== 'open') return comp;
     this._setPaused(false);
     this.emit('state');
     return comp;
   }
 
-  /** إنهاء التداول في الجولة الحالية فورًا (زر الأدمن "إنهاء الجولة"). */
-  endRoundNow() {
+  /** إنهاء استقبال الإجابات وكشف الصحيح فورًا (زر المقدّم «كشف الإجابة»). */
+  revealNow() {
     const comp = this.requireComp();
-    if (comp.roundState === 'open') {
-      comp.timeLeft = 0;
-      this._closeRound();
-    }
+    if (comp.questionState === 'open') this._revealQuestion();
     return comp;
   }
 
-  _closeRound() {
+  _revealQuestion() {
     const comp = this.comp;
     this._clearTickTimer();
-    comp.roundState = 'transition';
+    const q = Competition.currentQuestion(comp);
+    if (!q) return this._finish();
 
-    // تحديث السوق: حساب الأسعار الجديدة بناءً على النمط
-    const moves = stepPrices(comp, comp.currentRound);
-    const news = buildNews(moves);
-    comp.news = news;
-    comp.lastMoves = moves;
-
-    this.emit('round:transition', { round: comp.currentRound, moves, news });
-    this.emit('state');
-
-    // بعد حركة الانتقال: إمّا جولة تالية أو نهاية المنافسة
-    this._clearTransitionTimer();
-    this._transitionTimer = setTimeout(() => {
-      if (comp.currentRound >= comp.rounds) {
-        this._finish();
-      } else {
-        comp.currentRound += 1;
-        this._openRound();
+    // حساب النقاط لكل مجموعة أجابت
+    for (const g of comp.groups) {
+      const a = g.answers[q.id];
+      if (!a) {
+        g.streak = 0; // من لم يجب يفقد سلسلة الإجابات المتتالية
+        continue;
       }
-    }, TRANSITION_MS);
+      a.correct = a.optionIndex === q.correctIndex;
+      a.awarded = scoreAnswer(q, a.correct, a.atTimeLeft, comp.speedBonus);
+      if (a.correct) {
+        g.streak = (g.streak || 0) + 1;
+      } else {
+        g.streak = 0;
+      }
+      g.score = (g.score || 0) + a.awarded;
+    }
+
+    comp.questionState = 'revealed';
+    this._setPaused(false);
+    this.emit('question:reveal', { index: comp.currentIndex, correctIndex: q.correctIndex });
+    this.emit('state');
   }
 
-  /** تخطّي انتظار الانتقال والانتقال للجولة التالية فورًا (زر الأدمن). */
-  nextRound() {
+  /** الانتقال للسؤال التالي (أو إنهاء المسابقة إذا كان الأخير). */
+  nextQuestion() {
     const comp = this.requireComp();
-    if (comp.roundState !== 'transition') return comp;
-    this._clearTransitionTimer();
-    if (comp.currentRound >= comp.rounds) {
+    // إن كان السؤال ما زال مفتوحًا، اكشفه أولًا لاحتساب النقاط
+    if (comp.questionState === 'open') this._revealQuestion();
+    if (comp.currentIndex + 1 >= comp.questions.length) {
       this._finish();
     } else {
-      comp.currentRound += 1;
-      this._openRound();
+      comp.currentIndex += 1;
+      this._openQuestion();
     }
     return comp;
   }
@@ -174,76 +175,62 @@ class GameEngine extends EventEmitter {
     const comp = this.comp;
     this._clearTimers();
     comp.status = 'finished';
-    comp.roundState = 'idle';
+    comp.questionState = 'idle';
     const standings = Competition.groupsSummary(comp);
     this.emit('competition:finished', { standings, podium: standings.slice(0, 3) });
     this.emit('state');
   }
 
-  /** إنهاء المنافسة يدويًا من الأدمن. */
+  /** إنهاء المسابقة يدويًا من المقدّم. */
   finishNow() {
     this.requireComp();
     this._finish();
     return this.comp;
   }
 
-  // -------------------- التداول --------------------
+  // -------------------- استقبال الإجابات --------------------
 
   /**
-   * تنفيذ صفقة شراء/بيع لمجموعة. يتحقق من الكفاية في الخادم.
-   * @returns {{ok:boolean, error?:string, group?:object}}
+   * تسجيل إجابة مجموعة على السؤال الحالي. تُقبل مرة واحدة فقط لكل سؤال.
+   * @returns {{ok:boolean, error?:string}}
    */
-  trade(groupId, stockId, side, qty) {
+  submitAnswer(groupId, optionIndex) {
     const comp = this.requireComp();
-    const quantity = Math.floor(Number(qty));
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      return { ok: false, error: 'الكمية غير صالحة' };
+    if (comp.questionState !== 'open' || this.paused) {
+      return { ok: false, error: 'الإجابة مغلقة حاليًا' };
     }
-    if (comp.roundState !== 'open' || this.paused) {
-      return { ok: false, error: 'التداول مغلق حاليًا' };
-    }
+    const q = Competition.currentQuestion(comp);
+    if (!q) return { ok: false, error: 'لا يوجد سؤال نشط' };
     const group = Competition.findGroup(comp, groupId);
     if (!group) return { ok: false, error: 'المجموعة غير موجودة' };
-    const stock = Competition.findStock(comp, stockId);
-    if (!stock) return { ok: false, error: 'السهم غير موجود' };
-
-    if (side === 'buy') {
-      const cost = round2(stock.price * quantity);
-      if (cost > group.cash) {
-        return { ok: false, error: 'الرصيد النقدي غير كافٍ' };
-      }
-      group.cash = round2(group.cash - cost);
-      group.holdings[stockId] = (group.holdings[stockId] || 0) + quantity;
-      comp.roundFlow[stockId] = (comp.roundFlow[stockId] || 0) + quantity;
-    } else if (side === 'sell') {
-      const owned = group.holdings[stockId] || 0;
-      if (quantity > owned) {
-        return { ok: false, error: 'لا تملك هذا العدد من الأسهم' };
-      }
-      const proceeds = round2(stock.price * quantity);
-      group.cash = round2(group.cash + proceeds);
-      group.holdings[stockId] = owned - quantity;
-      if (group.holdings[stockId] === 0) delete group.holdings[stockId];
-      comp.roundFlow[stockId] = (comp.roundFlow[stockId] || 0) - quantity;
-    } else {
-      return { ok: false, error: 'نوع العملية غير صحيح' };
+    if (group.answers[q.id]) {
+      return { ok: false, error: 'سبق أن أجبتم على هذا السؤال' };
     }
-
-    this.emit('trade', { groupId });
+    const idx = Math.floor(Number(optionIndex));
+    if (!Number.isInteger(idx) || idx < 0 || idx >= q.options.length) {
+      return { ok: false, error: 'خيار غير صالح' };
+    }
+    group.answers[q.id] = {
+      optionIndex: idx,
+      atTimeLeft: comp.timeLeft,
+      correct: null,
+      awarded: 0,
+    };
+    this.emit('answer', { groupId });
     this.emit('state');
-    return { ok: true, group };
+    return { ok: true };
   }
 
-  // -------------------- تعديلات الأدمن على المال --------------------
+  // -------------------- تعديلات المقدّم على النقاط --------------------
 
-  adjustCash(groupId, amount) {
+  adjustScore(groupId, amount) {
     const comp = this.requireComp();
-    const delta = round2(Number(amount));
-    if (!Number.isFinite(delta)) throw new Error('المبلغ غير صالح');
+    const delta = Math.round(Number(amount));
+    if (!Number.isFinite(delta)) throw new Error('القيمة غير صالحة');
     const targets = groupId === 'ALL' ? comp.groups : [Competition.findGroup(comp, groupId)];
     for (const g of targets) {
       if (!g) continue;
-      g.cash = round2(Math.max(0, g.cash + delta));
+      g.score = Math.max(0, (g.score || 0) + delta);
     }
     this.emit('state');
     return comp;
@@ -258,17 +245,9 @@ class GameEngine extends EventEmitter {
     }
   }
 
-  _clearTransitionTimer() {
-    if (this._transitionTimer) {
-      clearTimeout(this._transitionTimer);
-      this._transitionTimer = null;
-    }
-  }
-
   _clearTimers() {
     this._clearTickTimer();
-    this._clearTransitionTimer();
   }
 }
 
-module.exports = { GameEngine, TRANSITION_MS };
+module.exports = { GameEngine };

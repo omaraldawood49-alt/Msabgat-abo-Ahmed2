@@ -1,15 +1,13 @@
 (function () {
   'use strict';
-  var el = U.el, fmt = U.fmt, dirClass = U.dirClass;
+  var el = U.el, fmt = U.fmt;
 
-  var CIRC = 2 * Math.PI * 52; // محيط دائرة العدّاد
+  var CIRC = 2 * Math.PI * 52;
+  var SHAPES = ['▲', '◆', '●', '■'];
   var lastState = null;
-  var animating = false;
-  var cardMap = {};   // stockId -> عناصر البطاقة
-  var histMap = {};   // stockId -> مصفوفة الأسعار (للمخطط)
+  var lastQState = null;
   var socket = io({ auth: { role: 'display' } });
 
-  // ---------- طبقة البدء (تفعيل الصوت) ----------
   document.getElementById('startBtn').addEventListener('click', function () {
     Sound.unlock();
     document.getElementById('startOverlay').classList.add('hidden');
@@ -19,29 +17,30 @@
   socket.on('tick', function (t) {
     if (lastState) { lastState.timeLeft = t.timeLeft; updateHeader(lastState); }
   });
-  socket.on('round:open', onRoundOpen);
-  socket.on('round:transition', onTransition);
+  socket.on('question:open', function () { Sound.roundStart(); });
+  socket.on('question:reveal', function () { Sound.reveal(); });
   socket.on('competition:finished', onFinished);
 
   // ---------- الرأس ----------
   function updateHeader(s) {
-    document.getElementById('compName').textContent = s.name || 'بورصة رواحل';
-    document.getElementById('roundNum').textContent = s.currentRound || '—';
-    document.getElementById('roundTotal').textContent = s.rounds ? ' / ' + s.rounds : '';
+    document.getElementById('compName').textContent = s.name || 'مسابقة الأسئلة';
+    document.getElementById('qNum').textContent = s.questionNumber || '—';
+    document.getElementById('qTotal').textContent = s.total ? ' / ' + s.total : '';
 
     var ms = document.getElementById('marketStatus');
     var st = document.getElementById('statusText');
-    var open = s.roundState === 'open';
+    var open = s.questionState === 'open' && !s.paused;
     ms.className = 'market-status ' + (open ? 'open' : s.status === 'finished' ? 'closed' : '');
-    st.textContent = s.status === 'finished' ? 'انتهت المنافسة'
-      : s.currentRound === 0 ? 'بانتظار البدء'
-      : open ? 'السوق مفتوح'
-      : s.roundState === 'transition' ? 'تحديث السوق' : 'السوق مغلق';
+    st.textContent = s.status === 'finished' ? 'انتهت المسابقة'
+      : s.currentIndex < 0 ? 'بانتظار البدء'
+      : open ? 'الإجابة مفتوحة'
+      : s.questionState === 'revealed' ? 'الإجابة الصحيحة' : 'متوقّف';
 
     var ring = document.getElementById('ringFg');
     var ringTime = document.getElementById('ringTime');
-    var dur = s.roundDurationSec || 1;
-    if (s.roundState === 'open') {
+    var q = s.question;
+    var dur = (q && q.timeLimitSec) || 1;
+    if (s.questionState === 'open') {
       var frac = Math.max(0, Math.min(1, s.timeLeft / dur));
       ring.style.strokeDashoffset = CIRC * (1 - frac);
       ring.style.stroke = s.timeLeft <= 5 ? 'var(--down)' : '#ffe08a';
@@ -50,183 +49,133 @@
       else { ringTime.style.color = ''; }
     } else {
       ring.style.strokeDashoffset = 0;
-      ringTime.textContent = s.status === 'finished' ? '✓' : '–';
+      ringTime.textContent = s.status === 'finished' ? '✓' : s.questionState === 'revealed' ? '✓' : '–';
       ringTime.style.color = '';
     }
   }
 
+  function show(id, on) { document.getElementById(id).classList[on ? 'remove' : 'add']('hidden'); }
+
   // ---------- العرض الكامل ----------
   function render(s) {
-    if (!s || !s.active) { lastState = s; return; }
+    if (!s || !s.active) {
+      lastState = s;
+      document.getElementById('compName').textContent = 'مسابقة الأسئلة';
+      show('lobby', true); show('stage', false);
+      document.getElementById('lobbyTitle').textContent = 'لا توجد مسابقة نشطة';
+      document.getElementById('lobbyCount').textContent = '0';
+      document.getElementById('lobbyGroups').innerHTML = '';
+      return;
+    }
     lastState = s;
     updateHeader(s);
-    renderNews(s);
-    if (!animating) renderCards(s);
-  }
 
-  // ---------- شبكة البطاقات الزجاجية ----------
-  function renderCards(s) {
-    var grid = document.getElementById('stockGrid');
-    var ids = s.stocks.map(function (x) { return x.id; }).join(',');
-    if (grid.dataset.ids !== ids) {
-      grid.innerHTML = ''; cardMap = {};
-      s.stocks.forEach(function (st) { grid.appendChild(buildCard(st)); });
-      grid.dataset.ids = ids;
+    if (s.status !== 'finished') {
+      document.getElementById('podiumOverlay').classList.add('hidden');
     }
-    s.stocks.forEach(function (st) {
-      pushHist(st);
-      updateCard(st, true);
-    });
-  }
 
-  function buildCard(st) {
-    var name = el('div', { class: 'gc-name' }, [st.name]);
-    var arrow = el('div', { class: 'gc-arrow' }, ['▬']);
-    var price = el('div', { class: 'gc-price mono' }, ['0']);
-    var spark = el('div', { class: 'gc-spark' });
-    var change = el('div', { class: 'gc-change mono' }, ['—']);
-    var card = el('div', { class: 'gcard', 'data-id': st.id }, [
-      el('div', { class: 'gc-top' }, [name, arrow]),
-      price, spark, change
-    ]);
-    cardMap[st.id] = { card: card, name: name, arrow: arrow, price: price, spark: spark, change: change };
-    return card;
-  }
-
-  function pushHist(st) {
-    var h = histMap[st.id];
-    if (!h) { histMap[st.id] = h = [Number(st.startPrice) || st.price]; }
-    if (h[h.length - 1] !== st.price) { h.push(st.price); if (h.length > 24) h.shift(); }
-  }
-
-  function updateCard(st, flash) {
-    var c = cardMap[st.id];
-    if (!c) return;
-    var dc = dirClass(st.direction);
-    c.name.textContent = st.name;
-    c.arrow.className = 'gc-arrow ' + dc;
-    c.arrow.textContent = st.direction === 'up' ? '▲' : st.direction === 'down' ? '▼' : '▬';
-    var prevText = c.price.textContent;
-    c.price.textContent = fmt(st.price);
-    c.change.className = 'gc-change mono ' + dc;
-    c.change.textContent = (st.lastChangePct > 0 ? '▲ ' : st.lastChangePct < 0 ? '▼ ' : '') + U.pct(st.lastChangePct);
-    c.spark.innerHTML = sparkSVG(histMap[st.id] || [st.price], st.direction);
-    if (flash && prevText !== '0' && prevText !== c.price.textContent) {
-      c.card.classList.remove('up-flash', 'down-flash'); void c.card.offsetWidth;
-      c.card.classList.add(st.direction === 'down' ? 'down-flash' : 'up-flash');
-      setTimeout(function () { c.card.classList.remove('up-flash', 'down-flash'); }, 1000);
-    }
-  }
-
-  function sparkSVG(hist, dir) {
-    var w = 200, h = 40, pad = 3, a = hist.slice();
-    if (a.length < 2) a = [a[0] || 0, a[0] || 0];
-    var mn = Math.min.apply(null, a), mx = Math.max.apply(null, a), flat = mx === mn, rng = (mx - mn) || 1;
-    var pts = a.map(function (v, i) {
-      var x = pad + i / (a.length - 1) * (w - 2 * pad);
-      var y = flat ? h / 2 : h - pad - (v - mn) / rng * (h - 2 * pad);
-      return [x, y];
-    });
-    var line = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ');
-    var area = line + ' L' + pts[pts.length - 1][0].toFixed(1) + ' ' + (h - pad) + ' L' + pts[0][0].toFixed(1) + ' ' + (h - pad) + ' Z';
-    var color = dir === 'up' ? '#8effc9' : dir === 'down' ? '#ffb3bd' : '#ffffff';
-    var id = 'sp' + Math.random().toString(36).slice(2, 7);
-    return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' +
-      '<defs><linearGradient id="' + id + '" x1="0" x2="0" y1="0" y2="1">' +
-      '<stop offset="0" stop-color="' + color + '" stop-opacity=".38"/><stop offset="1" stop-color="' + color + '" stop-opacity="0"/></linearGradient></defs>' +
-      '<path d="' + area + '" fill="url(#' + id + ')"/>' +
-      '<path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>';
-  }
-
-  function renderNews(s) {
-    var track = document.getElementById('newsTrack');
-    var news = (s.news && s.news.length) ? s.news : ['بانتظار بدء التداول...'];
-    track.innerHTML = news.map(function (n) { return '<span>' + escapeHtml(n) + '</span>'; }).join('•');
-  }
-  function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-
-  // ---------- أحداث الجولات ----------
-  var splashTimer = null;
-  function onRoundOpen(d) {
-    animating = false;
-    Sound.roundStart();
-    if (lastState) renderCards(lastState);
-    showRoundSplash(d.round);
-  }
-
-  function showRoundSplash(n) {
-    var overlay = document.getElementById('transitionOverlay');
-    var countBig = document.getElementById('countBig');
-    var transMsg = document.getElementById('transMsg');
-    countBig.textContent = 'الجولة ' + n;
-    countBig.style.fontSize = '104px';
-    countBig.classList.remove('count-big'); void countBig.offsetWidth; countBig.classList.add('count-big');
-    transMsg.textContent = '🚀 انطلقوا!';
-    overlay.classList.remove('hidden');
-    Sound.go();
-    clearTimeout(splashTimer);
-    splashTimer = setTimeout(function () { overlay.classList.add('hidden'); countBig.style.fontSize = ''; }, 1500);
-  }
-
-  function onTransition(d) {
-    animating = true;
-    Sound.roundEnd();
-    var overlay = document.getElementById('transitionOverlay');
-    var countBig = document.getElementById('countBig');
-    var transMsg = document.getElementById('transMsg');
-    transMsg.textContent = 'تحديث أسعار السوق...';
-    overlay.classList.remove('hidden');
-
-    var seq = ['3', '2', '1'];
-    var i = 0;
-    function step() {
-      if (i < seq.length) {
-        countBig.textContent = seq[i]; countBig.style.fontSize = '';
-        countBig.classList.remove('count-big'); void countBig.offsetWidth; countBig.classList.add('count-big');
-        Sound.countdown(); i++;
-        setTimeout(step, 700);
-      } else {
-        countBig.textContent = '';
-        transMsg.textContent = '📈 تتحرك الأسعار...';
-        animatePrices(d.moves, 2000, function () {
-          hideTransition();
-          animating = false;
-          if (lastState) render(lastState);
-        });
+    if (s.status === 'finished') {
+      show('lobby', false); show('stage', false);
+      // في حال إعادة تحميل الشاشة بعد النهاية، نبني لوحة التتويج من الحالة
+      if (document.getElementById('podiumOverlay').classList.contains('hidden')) {
+        buildPodium(s.leaderboard || []);
       }
+      return;
     }
-    step();
+
+    if (s.currentIndex < 0 || !s.question) {
+      renderLobby(s);
+      show('lobby', true); show('stage', false);
+      lastQState = null;
+      return;
+    }
+
+    show('lobby', false); show('stage', true);
+    renderStage(s);
   }
 
-  function animatePrices(moves, duration, done) {
-    if (!moves || !moves.length) { if (done) done(); return; }
-    var start = performance.now();
-    function frame(now) {
-      var t = Math.min(1, (now - start) / duration);
-      var ease = 1 - Math.pow(1 - t, 3);
-      moves.forEach(function (m) {
-        var c = cardMap[m.id];
-        if (!c) return;
-        var val = m.prevPrice + (m.price - m.prevPrice) * ease;
-        c.price.textContent = fmt(val);
-        c.arrow.className = 'gc-arrow ' + m.direction;
-        c.arrow.textContent = m.direction === 'up' ? '▲' : m.direction === 'down' ? '▼' : '▬';
+  // ---------- الردهة ----------
+  function renderLobby(s) {
+    document.getElementById('lobbyTitle').textContent = 'بانتظار بدء المسابقة';
+    document.getElementById('lobbyCount').textContent = s.groupCount || 0;
+    fetch('/api/config').then(function (r) { return r.json(); }).then(function (c) {
+      document.getElementById('joinUrl').textContent = (c.baseUrl || '') + '/player';
+    }).catch(function () {});
+    var wrap = document.getElementById('lobbyGroups');
+    wrap.innerHTML = '';
+    (s.lobby || []).forEach(function (g) {
+      wrap.appendChild(el('div', { class: 'chip-team' }, [g.name]));
+    });
+  }
+
+  // ---------- منصة السؤال ----------
+  var optRefs = [];
+  function renderStage(s) {
+    var q = s.question;
+    var revealed = s.questionState === 'revealed';
+    document.getElementById('qCategory').textContent = q.category || '';
+    document.getElementById('qPoints').textContent = q.points ? q.points + ' نقطة' : '';
+    document.getElementById('qText').textContent = q.text;
+
+    var answeredEl = document.getElementById('qAnswered');
+    answeredEl.textContent = revealed ? '' : '✋ أجاب ' + q.answered + ' من ' + q.total;
+
+    // إعادة بناء الشبكة عند تغيّر السؤال/عدد الخيارات
+    var grid = document.getElementById('optGrid');
+    var sig = s.questionNumber + ':' + q.options.length;
+    if (grid.dataset.sig !== sig) {
+      grid.innerHTML = ''; optRefs = [];
+      grid.className = 'opt-grid' + (q.options.length <= 2 ? ' cols1' : '');
+      q.options.forEach(function (o, i) {
+        var shape = el('span', { class: 'shape' }, [SHAPES[i] || '●']);
+        var text = el('span', { class: 'otext' }, [o.text]);
+        var tally = el('span', { class: 'tally hidden' }, ['0']);
+        var check = el('span', { class: 'check hidden' }, ['✓']);
+        var tile = el('div', { class: 'opt-tile opt-' + i }, [shape, text, tally, check]);
+        optRefs.push({ tile: tile, tally: tally, check: check });
+        grid.appendChild(tile);
       });
-      if (t < 1) { requestAnimationFrame(frame); }
-      else {
-        moves.forEach(function (m) {
-          var st = { id: m.id, name: (cardMap[m.id] ? cardMap[m.id].name.textContent : ''), price: m.price, direction: m.direction, lastChangePct: m.changePct, startPrice: m.prevPrice };
-          pushHist(st); updateCard(st, true);
-        });
-        if (done) done();
-      }
+      grid.dataset.sig = sig;
     }
-    requestAnimationFrame(frame);
+
+    optRefs.forEach(function (r, i) {
+      r.tile.classList.remove('correct', 'dimmed');
+      if (revealed) {
+        var isCorrect = i === q.correctIndex;
+        r.tile.classList.add(isCorrect ? 'correct' : 'dimmed');
+        r.check.classList[isCorrect ? 'remove' : 'add']('hidden');
+        if (q.tally) { r.tally.classList.remove('hidden'); r.tally.textContent = q.tally[i]; }
+      } else {
+        r.check.classList.add('hidden');
+        r.tally.classList.add('hidden');
+      }
+    });
+
+    // شريط الترتيب عند الكشف
+    var rb = document.getElementById('revealBoard');
+    if (revealed) {
+      renderRevealBoard(s.leaderboard || []);
+      rb.classList.remove('hidden');
+    } else {
+      rb.classList.add('hidden');
+    }
+
+    lastQState = s.questionState;
   }
 
-  function hideTransition() { document.getElementById('transitionOverlay').classList.add('hidden'); }
+  function renderRevealBoard(rows) {
+    var rb = document.getElementById('revealBoard');
+    rb.innerHTML = '';
+    rows.slice(0, 5).forEach(function (g) {
+      rb.appendChild(el('div', { class: 'rb-item' + (g.rank === 1 ? ' r1' : '') }, [
+        el('span', { class: 'rb-rank' }, ['#' + g.rank]),
+        el('span', {}, [g.name]),
+        el('span', { class: 'rb-score mono' }, [fmt(g.score)])
+      ]));
+    });
+  }
 
-  // ---------- التتويج (يُكشف الترتيب هنا فقط) ----------
+  // ---------- التتويج ----------
   function launchConfetti() {
     var old = document.querySelector('.confetti');
     if (old) old.remove();
@@ -246,15 +195,12 @@
     setTimeout(function () { wrap.remove(); }, 9000);
   }
 
-  function onFinished(d) {
-    Sound.win();
-    launchConfetti();
-    var standings = d.standings || d.podium || [];
+  function buildPodium(standings) {
     var podium = document.getElementById('podium');
     var rest = document.getElementById('podiumRest');
     podium.innerHTML = '';
     var top3 = standings.slice(0, 3);
-    var order = [top3[1], top3[0], top3[2]]; // فضي، ذهبي، برونزي (بصريًا)
+    var order = [top3[1], top3[0], top3[2]];
     order.forEach(function (g) {
       if (!g) return;
       var medal = g.rank === 1 ? '🥇' : g.rank === 2 ? '🥈' : '🥉';
@@ -262,14 +208,20 @@
       podium.appendChild(el('div', { class: 'pod ' + pcls }, [
         el('div', { class: 'medal' }, [medal]),
         el('div', { class: 'pname' }, [g.name]),
-        el('div', { class: 'pwealth mono' }, [U.fmtMoney(g.wealth)]),
+        el('div', { class: 'pwealth mono' }, [fmt(g.score) + ' نقطة']),
         el('div', { class: 'muted' }, ['المركز ' + g.rank])
       ]));
     });
     rest.innerHTML = '';
     standings.slice(3).forEach(function (g) {
-      rest.appendChild(el('div', {}, [g.rank + '. ' + g.name + ' — ' + U.fmtMoney(g.wealth)]));
+      rest.appendChild(el('div', {}, [g.rank + '. ' + g.name + ' — ' + fmt(g.score) + ' نقطة']));
     });
     document.getElementById('podiumOverlay').classList.remove('hidden');
+  }
+
+  function onFinished(d) {
+    Sound.win();
+    launchConfetti();
+    buildPodium(d.standings || d.podium || []);
   }
 })();
