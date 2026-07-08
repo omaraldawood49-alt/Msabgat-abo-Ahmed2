@@ -30,7 +30,7 @@ function createRouter(engine) {
     res.json({
       baseUrl: resolveBase(engine, req),
       hasCompetition: !!engine.comp,
-      requiresPin: !!process.env.ADMIN_PIN || true,
+      requiresPin: !!process.env.ADMIN_PIN,
     });
   });
 

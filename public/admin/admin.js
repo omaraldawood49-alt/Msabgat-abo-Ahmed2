@@ -14,9 +14,9 @@
   var loginBtn = document.getElementById('loginBtn');
   var loginErr = document.getElementById('loginErr');
 
-  function login() {
+  function login(allowEmpty) {
     var pin = pinInput.value;
-    if (!pin) { loginErr.textContent = 'أدخل الرمز'; return; }
+    if (!pin && !allowEmpty) { loginErr.textContent = 'أدخل الرمز'; return; }
     loginBtn.disabled = true; loginErr.textContent = '';
     socket = io({ auth: { role: 'admin', pin: pin } });
     socket.on('auth:ok', function () {
@@ -37,7 +37,14 @@
   }
   loginBtn.addEventListener('click', login);
   pinInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') login(); });
-  try { var saved = sessionStorage.getItem('quiz_pin'); if (saved) { pinInput.value = saved; login(); } } catch (e) {}
+
+  // إن لم يكن هناك رمز مطلوب، ندخل مباشرة بلا شاشة تسجيل دخول
+  fetch('/api/config').then(function (r) { return r.json(); }).then(function (c) {
+    if (!c || !c.requiresPin) { pinInput.value = ''; login(true); return; }
+    try { var saved = sessionStorage.getItem('quiz_pin'); if (saved) { pinInput.value = saved; login(); } } catch (e) {}
+  }).catch(function () {
+    try { var s = sessionStorage.getItem('quiz_pin'); if (s) { pinInput.value = s; login(); } } catch (e) {}
+  });
 
   // ---------- مساعد الإرسال ----------
   function send(event, payload) {

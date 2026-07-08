@@ -7,7 +7,7 @@ const { Server } = require('socket.io');
 
 const { GameEngine } = require('./engine/GameEngine');
 const { createRouter } = require('./net/routes');
-const { attachSockets, ADMIN_PIN } = require('./net/sockets');
+const { attachSockets, ADMIN_PIN, REQUIRE_PIN } = require('./net/sockets');
 const persist = require('./state/persist');
 
 const PORT = process.env.PORT || 3000;
@@ -58,11 +58,11 @@ server.listen(PORT, () => {
   console.log('==================================================');
   console.log(`  الخادم يعمل على المنفذ: ${PORT}`);
   console.log(`  شاشة العرض:   http://localhost:${PORT}/display`);
-  console.log(`  شاشة المقدّم: http://localhost:${PORT}/admin   (الرمز: ${ADMIN_PIN})`);
+  console.log(`  شاشة المقدّم: http://localhost:${PORT}/admin   (${REQUIRE_PIN ? 'الرمز: ' + ADMIN_PIN : 'بدون رمز'})`);
   console.log(`  جوال المجموعة: http://localhost:${PORT}/player`);
   console.log('==================================================');
-  if (ADMIN_PIN === '1234') {
-    console.log('  ⚠️  تحذير: رمز الأدمن الافتراضي 1234 — غيّره عبر متغير البيئة ADMIN_PIN');
+  if (!REQUIRE_PIN) {
+    console.log('  ℹ️  شاشة المقدّم تفتح بلا رمز. لتفعيل رمز سري اضبط متغيّر البيئة ADMIN_PIN.');
   }
 });
 

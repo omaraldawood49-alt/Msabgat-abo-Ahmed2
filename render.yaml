@@ -9,8 +9,7 @@ services:
     startCommand: npm start
     healthCheckPath: /api/config
     envVars:
-      # رمز دخول شاشة المقدّم — سيطلب منك Render إدخال قيمته عند الرفع.
-      - key: ADMIN_PIN
-        sync: false
+      # لا يوجد رمز دخول — شاشة المقدّم تفتح مباشرة.
+      # (لتفعيل رمز سري لاحقًا: أضِف متغيّر ADMIN_PIN بقيمة سرية في إعدادات الخدمة.)
       - key: NODE_VERSION
         value: "20"

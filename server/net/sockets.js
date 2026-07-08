@@ -4,7 +4,9 @@ const Competition = require('../engine/Competition');
 const views = require('./views');
 const persist = require('../state/persist');
 
-const ADMIN_PIN = process.env.ADMIN_PIN || '1234';
+// الرمز اختياري: إن لم يُضبط ADMIN_PIN فلا يُطلب رمز إطلاقًا لدخول المقدّم.
+const REQUIRE_PIN = !!process.env.ADMIN_PIN;
+const ADMIN_PIN = process.env.ADMIN_PIN || '';
 
 /**
  * يربط طبقة Socket.IO بمحرّك اللعبة:
@@ -62,7 +64,7 @@ function attachSockets(io, engine) {
     }
 
     if (role === 'admin') {
-      if (String(auth.pin) !== String(ADMIN_PIN)) {
+      if (REQUIRE_PIN && String(auth.pin) !== String(ADMIN_PIN)) {
         socket.emit('auth:error', { error: 'رمز المقدّم غير صحيح' });
         socket.disconnect(true);
         return;
@@ -240,4 +242,4 @@ function attachSockets(io, engine) {
   return { pushAll };
 }
 
-module.exports = { attachSockets, ADMIN_PIN };
+module.exports = { attachSockets, ADMIN_PIN, REQUIRE_PIN };
