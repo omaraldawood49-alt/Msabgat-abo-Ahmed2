@@ -33,8 +33,10 @@
     var st = document.getElementById('statusText');
     var live = (s.questionState === 'lies' || s.questionState === 'pick') && !s.paused;
     ms.className = 'market-status ' + (live ? 'open' : s.status === 'finished' ? 'closed' : '');
+    var timeUp = (s.questionState === 'lies' || s.questionState === 'pick') && s.timeLeft === 0 && !s.paused;
     st.textContent = s.status === 'finished' ? 'انتهت المسابقة'
       : s.currentIndex < 0 ? 'بانتظار البدء'
+      : timeUp ? 'انتهى الوقت ⏰'
       : s.questionState === 'lies' ? 'اكتبوا اللغم 💣'
       : s.questionState === 'pick' ? 'اختاروا الإجابة'
       : s.questionState === 'revealed' ? 'الإجابة الصحيحة' : 'متوقّف';

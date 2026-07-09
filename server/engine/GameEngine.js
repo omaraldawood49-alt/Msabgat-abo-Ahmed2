@@ -95,10 +95,11 @@ class GameEngine extends EventEmitter {
       if (comp.questionState !== 'lies' && comp.questionState !== 'pick') return;
       comp.timeLeft -= 1;
       if (comp.timeLeft <= 0) {
+        // انتهى الوقت — لا ننتقل تلقائيًا؛ المقدّم هو من يقرّر الانتقال يدويًا
         comp.timeLeft = 0;
         this.emit('tick', { timeLeft: 0 });
-        if (comp.questionState === 'lies') this._toPick();
-        else this._reveal();
+        this._clearTickTimer();
+        this.emit('state');
       } else {
         this.emit('tick', { timeLeft: comp.timeLeft });
       }

@@ -78,8 +78,10 @@
     var txt = document.getElementById('statusText');
     var open = s.question && (s.questionState === 'lies' || s.questionState === 'pick');
     line.className = 'status-line ' + (open ? 'open' : '');
+    var timeUp = (s.questionState === 'lies' || s.questionState === 'pick') && s.timeLeft === 0 && !s.paused;
     if (s.status === 'finished') txt.textContent = 'انتهت المسابقة';
     else if (s.currentIndex < 0) txt.textContent = 'بانتظار البدء';
+    else if (timeUp) txt.textContent = 'انتهى الوقت ⏰';
     else if (s.questionState === 'lies') txt.textContent = 'اكتبوا اللغم!';
     else if (s.questionState === 'pick') txt.textContent = 'اختاروا الإجابة';
     else if (s.questionState === 'revealed') txt.textContent = 'النتيجة';
