@@ -4,61 +4,43 @@ const fs = require('fs');
 const path = require('path');
 
 const DATA_DIR = path.join(__dirname, '..', '..', 'data');
-const FILE = path.join(DATA_DIR, 'competition.json');
+const FILE = path.join(DATA_DIR, 'rooms.json');
 
 let _timer = null;
 
 function ensureDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-/** حفظ لقطة المنافسة (debounced لتفادي كثرة الكتابة). */
-function save(comp) {
-  if (!comp) return;
+/** حفظ لقطة كل الغرف (debounced). */
+function save(rooms) {
   if (_timer) clearTimeout(_timer);
-  _timer = setTimeout(() => {
-    try {
-      ensureDir();
-      const snapshot = { savedAt: Date.now(), comp };
-      fs.writeFileSync(FILE, JSON.stringify(snapshot), 'utf8');
-    } catch (err) {
-      console.error('[persist] فشل الحفظ:', err.message);
-    }
-  }, 400);
+  _timer = setTimeout(() => saveNow(rooms), 400);
 }
 
-/** حفظ فوري (يُستخدم عند الإيقاف). */
-function saveNow(comp) {
-  if (!comp) return;
+function saveNow(rooms) {
   try {
     ensureDir();
-    fs.writeFileSync(FILE, JSON.stringify({ savedAt: Date.now(), comp }), 'utf8');
+    fs.writeFileSync(FILE, JSON.stringify({ savedAt: Date.now(), rooms: rooms || [] }), 'utf8');
   } catch (err) {
-    console.error('[persist] فشل الحفظ الفوري:', err.message);
+    console.error('[persist] فشل الحفظ:', err.message);
   }
 }
 
-/** تحميل آخر لقطة محفوظة إن وُجدت. */
+/** تحميل لقطة الغرف (مصفوفة). */
 function load() {
   try {
-    if (!fs.existsSync(FILE)) return null;
-    const raw = fs.readFileSync(FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    return parsed && parsed.comp ? parsed.comp : null;
+    if (!fs.existsSync(FILE)) return [];
+    const parsed = JSON.parse(fs.readFileSync(FILE, 'utf8'));
+    return parsed && Array.isArray(parsed.rooms) ? parsed.rooms : [];
   } catch (err) {
     console.error('[persist] فشل التحميل:', err.message);
-    return null;
+    return [];
   }
 }
 
 function clear() {
-  try {
-    if (fs.existsSync(FILE)) fs.unlinkSync(FILE);
-  } catch (err) {
-    console.error('[persist] فشل الحذف:', err.message);
-  }
+  try { if (fs.existsSync(FILE)) fs.unlinkSync(FILE); } catch (err) { /* ignore */ }
 }
 
 module.exports = { save, saveNow, load, clear, FILE };

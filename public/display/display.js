@@ -7,21 +7,42 @@
   var animating = false;
   var cardMap = {};   // stockId -> عناصر البطاقة
   var histMap = {};   // stockId -> مصفوفة الأسعار (للمخطط)
-  var socket = io({ auth: { role: 'display' } });
+  var roomId = (U.qs('room') || '').toUpperCase();
+  var socket = null;
 
   // ---------- طبقة البدء (تفعيل الصوت) ----------
   document.getElementById('startBtn').addEventListener('click', function () {
     Sound.unlock();
     document.getElementById('startOverlay').classList.add('hidden');
   });
-
-  socket.on('state', render);
-  socket.on('tick', function (t) {
-    if (lastState) { lastState.timeLeft = t.timeLeft; updateHeader(lastState); }
+  document.getElementById('roomGo').addEventListener('click', function () {
+    var v = (document.getElementById('roomInput').value || '').trim().toUpperCase();
+    if (v) location.href = '?room=' + encodeURIComponent(v);
   });
-  socket.on('round:open', onRoundOpen);
-  socket.on('round:transition', onTransition);
-  socket.on('competition:finished', onFinished);
+  document.getElementById('roomInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') document.getElementById('roomGo').click();
+  });
+
+  function showRoomEntry(msg) {
+    document.getElementById('startMsg').textContent = msg || 'أدخل رمز الغرفة';
+    document.getElementById('startBtn').classList.add('hidden');
+    document.getElementById('roomEntry').classList.remove('hidden');
+  }
+
+  function boot() {
+    if (!roomId) { showRoomEntry('أدخل رمز الغرفة لعرض شاشتها (تجده في لوحة الأدمن)'); return; }
+    socket = io({ auth: { role: 'display', roomId: roomId } });
+    socket.on('auth:error', function (e) { showRoomEntry((e && e.error) || 'تعذّر فتح الغرفة'); });
+    socket.on('state', render);
+    socket.on('tick', function (t) {
+      if (lastState) { lastState.timeLeft = t.timeLeft; updateHeader(lastState); }
+    });
+    socket.on('round:open', onRoundOpen);
+    socket.on('round:transition', onTransition);
+    socket.on('competition:finished', onFinished);
+    socket.on('room:closed', function () { showRoomEntry('أُغلقت هذه الغرفة'); });
+  }
+  boot();
 
   // ---------- الرأس ----------
   function updateHeader(s) {

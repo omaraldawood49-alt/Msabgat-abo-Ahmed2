@@ -1,97 +1,97 @@
 'use strict';
 
 const Competition = require('../engine/Competition');
+const { TRANSITION_MS } = require('../engine/GameEngine');
 const views = require('./views');
 const persist = require('../state/persist');
 
-const ADMIN_PIN = process.env.ADMIN_PIN || '1234';
-
 /**
- * يربط طبقة Socket.IO بمحرّك اللعبة:
- *  - غرف: display / admin / group:<id>
- *  - بثّ مُفلتر حسب الدور
- *  - استقبال أوامر الأدمن وصفقات المتسابقين
+ * يربط Socket.IO بمدير الغرف (متعدد الغرف).
+ * قنوات لكل غرفة: room:<id> (عام) ، display:<id> ، admin:<id> ، group:<groupId>
  */
-function attachSockets(io, engine) {
-  // ------- دوال البثّ -------
-  function pushDisplay() {
-    io.to('display').emit('state', views.displayState(engine.comp));
+function attachSockets(io, rm) {
+  // ---------- البثّ لكل غرفة ----------
+  function pushDisplay(id) {
+    const r = rm.get(id);
+    if (r) io.to('display:' + id).emit('state', views.displayState(r.engine.comp));
   }
-  function pushAdmin() {
-    io.to('admin').emit('state', views.adminState(engine.comp));
+  function pushAdmin(id) {
+    const r = rm.get(id);
+    if (r) io.to('admin:' + id).emit('state', views.adminState(r.engine.comp));
   }
-  function pushGroups() {
-    if (!engine.comp) return;
-    for (const g of engine.comp.groups) {
-      io.to(`group:${g.id}`).emit('state', views.playerState(engine.comp, g));
+  function pushGroups(id) {
+    const r = rm.get(id);
+    if (!r || !r.engine.comp) return;
+    for (const g of r.engine.comp.groups) {
+      io.to('group:' + g.id).emit('state', views.playerState(r.engine.comp, g));
     }
   }
-  function pushAll() {
-    pushDisplay();
-    pushAdmin();
-    pushGroups();
-  }
+  function pushAll(id) { pushDisplay(id); pushAdmin(id); pushGroups(id); }
 
-  // ------- الاشتراك في أحداث المحرّك -------
-  engine.on('state', () => {
-    pushAll();
-    persist.save(engine.comp);
-  });
-  engine.on('tick', ({ timeLeft }) => {
-    // نبضة خفيفة للمؤقّت فقط (بدون إعادة بثّ الحالة كاملة)
-    io.emit('tick', { timeLeft, currentRound: engine.comp ? engine.comp.currentRound : 0 });
-  });
-  engine.on('round:open', ({ round }) => {
-    io.emit('round:open', { round, durationSec: engine.comp.roundDurationSec });
-  });
-  engine.on('round:transition', ({ round, moves, news }) => {
-    io.emit('round:transition', {
-      round,
-      moves,
-      news,
-      transitionMs: require('../engine/GameEngine').TRANSITION_MS,
+  // ---------- ربط أحداث محرّك غرفة ----------
+  function wire(room) {
+    const id = room.id;
+    const engine = room.engine;
+    engine.on('state', () => { pushAll(id); rm.touch(id); persist.save(rm.snapshot()); });
+    engine.on('tick', ({ timeLeft }) => {
+      io.to('room:' + id).emit('tick', { timeLeft, currentRound: engine.comp ? engine.comp.currentRound : 0 });
     });
-  });
-  engine.on('competition:finished', ({ standings, podium }) => {
-    io.emit('competition:finished', { standings, podium, name: engine.comp.name });
-  });
+    engine.on('round:open', ({ round }) => {
+      io.to('room:' + id).emit('round:open', { round, durationSec: engine.comp.roundDurationSec });
+    });
+    engine.on('round:transition', ({ round, moves, news }) => {
+      io.to('room:' + id).emit('round:transition', { round, moves, news, transitionMs: TRANSITION_MS });
+    });
+    engine.on('competition:finished', ({ standings, podium }) => {
+      io.to('room:' + id).emit('competition:finished', { standings, podium, name: engine.comp.name });
+    });
+  }
+  for (const room of rm.rooms.values()) wire(room);
+  rm.on('room:new', wire);
+  rm.on('room:remove', (id) => { io.to('room:' + id).emit('room:closed', {}); });
 
-  // ------- الاتصال -------
+  // ---------- الاتصال ----------
   io.on('connection', (socket) => {
     const auth = socket.handshake.auth || {};
     const role = auth.role;
 
     if (role === 'display') {
-      socket.join('display');
-      socket.emit('state', views.displayState(engine.comp));
-      return;
-    }
-
-    if (role === 'admin') {
-      if (String(auth.pin) !== String(ADMIN_PIN)) {
-        socket.emit('auth:error', { error: 'رمز الأدمن غير صحيح' });
-        socket.disconnect(true);
-        return;
-      }
-      socket.join('admin');
-      socket.emit('auth:ok', { role: 'admin' });
-      socket.emit('state', views.adminState(engine.comp));
-      registerAdminHandlers(socket);
+      const r = rm.get(auth.roomId);
+      if (!r) { socket.emit('auth:error', { error: 'الغرفة غير موجودة أو انتهت' }); return socket.disconnect(true); }
+      socket.data.roomId = r.id;
+      socket.join('room:' + r.id);
+      socket.join('display:' + r.id);
+      rm.touch(r.id);
+      socket.emit('auth:ok', { role: 'display', roomId: r.id });
+      socket.emit('state', views.displayState(r.engine.comp));
       return;
     }
 
     if (role === 'player') {
-      const group = Competition.findGroupByCode(engine.comp, auth.code);
-      if (!group) {
-        socket.emit('auth:error', { error: 'كود المجموعة غير صحيح أو لا توجد منافسة نشطة' });
-        socket.disconnect(true);
-        return;
-      }
+      const found = rm.findByGroupCode(auth.code);
+      if (!found) { socket.emit('auth:error', { error: 'كود المجموعة غير صحيح أو لا توجد غرفة نشطة' }); return socket.disconnect(true); }
+      const { room, group } = found;
+      socket.data.roomId = room.id;
       socket.data.groupId = group.id;
-      socket.join(`group:${group.id}`);
-      socket.emit('auth:ok', { role: 'player', groupId: group.id, name: group.name });
-      socket.emit('state', views.playerState(engine.comp, group));
-      registerPlayerHandlers(socket);
+      socket.join('room:' + room.id);
+      socket.join('group:' + group.id);
+      rm.touch(room.id);
+      socket.emit('auth:ok', { role: 'player', roomId: room.id, groupId: group.id, name: group.name });
+      socket.emit('state', views.playerState(room.engine.comp, group));
+      registerPlayer(socket);
+      return;
+    }
+
+    if (role === 'admin') {
+      // ربط بغرفة قائمة إن مُرِّر رمز التحكم
+      if (auth.roomId && auth.hostKey) {
+        const res = attachAdmin(socket, auth.roomId, auth.hostKey);
+        if (res.ok) socket.emit('auth:ok', { role: 'admin', roomId: res.room.id });
+        else socket.emit('auth:error', res);
+      } else {
+        socket.emit('auth:ok', { role: 'admin' }); // بلا غرفة بعد — سينشئ واحدة
+      }
+      registerAdmin(socket);
       return;
     }
 
@@ -99,29 +99,35 @@ function attachSockets(io, engine) {
     socket.disconnect(true);
   });
 
-  // ------- أوامر المتسابق -------
-  function registerPlayerHandlers(socket) {
+  // ---------- مساعد ربط الأدمن بغرفة ----------
+  function attachAdmin(socket, roomId, hostKey) {
+    const r = rm.get(roomId);
+    if (!r) return { ok: false, error: 'الغرفة غير موجودة' };
+    if (String(r.hostKey) !== String(hostKey)) return { ok: false, error: 'رمز التحكم غير صحيح' };
+    socket.data.roomId = r.id;
+    socket.data.isHost = true;
+    socket.join('room:' + r.id);
+    socket.join('admin:' + r.id);
+    socket.emit('state', views.adminState(r.engine.comp));
+    return { ok: true, room: r };
+  }
+
+  // ---------- أوامر المتسابق ----------
+  function registerPlayer(socket) {
     socket.on('player:trade', (payload, ack) => {
-      const groupId = socket.data.groupId;
+      const r = rm.get(socket.data.roomId);
       const { stockId, side, qty } = payload || {};
       let result;
-      try {
-        result = engine.trade(groupId, stockId, side, qty);
-      } catch (err) {
-        result = { ok: false, error: err.message };
-      }
+      try { result = r ? r.engine.trade(socket.data.groupId, stockId, side, qty) : { ok: false, error: 'الغرفة غير متاحة' }; }
+      catch (err) { result = { ok: false, error: err.message }; }
       if (typeof ack === 'function') {
-        if (result.ok) {
-          ack({ ok: true, cash: result.group.cash });
-        } else {
-          ack({ ok: false, error: result.error });
-        }
+        ack(result.ok ? { ok: true, cash: result.group.cash } : { ok: false, error: result.error });
       }
     });
   }
 
-  // ------- أوامر الأدمن -------
-  function registerAdminHandlers(socket) {
+  // ---------- أوامر الأدمن ----------
+  function registerAdmin(socket) {
     const guard = (fn) => (payload, ack) => {
       try {
         const r = fn(payload || {});
@@ -131,115 +137,127 @@ function attachSockets(io, engine) {
         else socket.emit('admin:error', { error: err.message });
       }
     };
+    // ينفّذ على محرّك غرفة الأدمن الحالية (لا بد أن يكون مالكها)
+    const room = () => {
+      const r = rm.get(socket.data.roomId);
+      if (!r || !socket.data.isHost) throw new Error('لا توجد غرفة نشطة — أنشئ غرفة أولًا');
+      return r;
+    };
+    const engine = () => room().engine;
 
-    // إنشاء منافسة جديدة
-    socket.on('admin:create', guard((opts) => {
-      engine.newCompetition(opts);
-      return { id: engine.comp.id };
+    // إنشاء غرفة جديدة
+    socket.on('admin:createRoom', guard((opts) => {
+      const r = rm.createRoom(opts);
+      socket.data.roomId = r.id;
+      socket.data.isHost = true;
+      socket.join('room:' + r.id);
+      socket.join('admin:' + r.id);
+      r.engine.emit('state');
+      return { roomId: r.id, hostKey: r.hostKey };
     }));
 
-    // تحديث الإعدادات العامة (قبل بدء المنافسة يفضَّل)
-    socket.on('admin:updateSettings', guard((fields) => {
-      const c = engine.requireComp();
+    // الانضمام لغرفة قائمة (جهاز آخر) برمز التحكم
+    socket.on('admin:attachRoom', guard((f) => {
+      const res = attachAdmin(socket, f.roomId, f.hostKey);
+      if (!res.ok) throw new Error(res.error);
+      return { roomId: res.room.id };
+    }));
+
+    // إغلاق/حذف الغرفة
+    socket.on('admin:closeRoom', guard(() => {
+      const r = room();
+      rm.remove(r.id);
+      persist.save(rm.snapshot());
+      socket.data.roomId = null; socket.data.isHost = false;
+    }));
+
+    // الإعدادات العامة
+    socket.on('admin:updateSettings', guard((f) => {
+      const c = engine().requireComp();
       const allowed = ['name', 'rounds', 'roundDurationSec', 'initialCapital', 'pricingMode'];
       for (const k of allowed) {
-        if (fields[k] !== undefined && fields[k] !== null && fields[k] !== '') {
-          c[k] = k === 'name' || k === 'pricingMode' ? fields[k] : Number(fields[k]);
+        if (f[k] !== undefined && f[k] !== null && f[k] !== '') {
+          c[k] = (k === 'name' || k === 'pricingMode') ? f[k] : Number(f[k]);
         }
       }
-      engine.emit('state');
+      engine().emit('state');
     }));
 
-    // إدارة الأسهم
+    // الأسهم
     socket.on('admin:stock:add', guard((f) => {
-      const c = engine.requireComp();
+      const c = engine().requireComp();
       const stock = Competition.makeStock(f.name || 'سهم جديد', Number(f.price) || 10);
       c.stocks.push(stock);
-      engine.emit('state');
+      engine().emit('state');
       return { id: stock.id };
     }));
     socket.on('admin:stock:update', guard((f) => {
-      const c = engine.requireComp();
+      const c = engine().requireComp();
       const s = Competition.findStock(c, f.id);
       if (!s) throw new Error('السهم غير موجود');
       if (f.name !== undefined) s.name = f.name;
       if (f.price !== undefined && f.price !== '') {
         const p = Number(f.price);
-        // قبل بدء المنافسة: تعديل سعر البداية يعدّل السعر الحالي أيضًا
-        if (c.currentRound === 0) {
-          s.startPrice = p;
-          s.price = p;
-          s.prevPrice = p;
-        } else {
-          s.price = p;
-        }
+        if (c.currentRound === 0) { s.startPrice = p; s.price = p; s.prevPrice = p; }
+        else s.price = p;
       }
-      engine.emit('state');
+      engine().emit('state');
     }));
     socket.on('admin:stock:remove', guard((f) => {
-      const c = engine.requireComp();
+      const c = engine().requireComp();
       c.stocks = c.stocks.filter((s) => s.id !== f.id);
-      // إزالة هذا السهم من محافظ المجموعات
       for (const g of c.groups) delete g.holdings[f.id];
-      engine.emit('state');
+      engine().emit('state');
     }));
     socket.on('admin:stock:manual', guard((f) => {
-      const c = engine.requireComp();
+      const c = engine().requireComp();
       const s = Competition.findStock(c, f.id);
       if (!s) throw new Error('السهم غير موجود');
-      if (Array.isArray(f.manualChanges)) {
-        s.manualChanges = f.manualChanges.map((x) => Number(x) || 0);
-      }
-      engine.emit('state');
+      if (Array.isArray(f.manualChanges)) s.manualChanges = f.manualChanges.map((x) => Number(x) || 0);
+      engine().emit('state');
     }));
 
-    // إدارة المجموعات
+    // المجموعات (أكواد فريدة عبر كل الغرف)
     socket.on('admin:group:add', guard((f) => {
-      const c = engine.requireComp();
-      const codes = new Set(c.groups.map((g) => g.code));
+      const c = engine().requireComp();
+      const codes = rm.allGroupCodes();
       const g = Competition.makeGroup(f.name || `المجموعة ${c.groups.length + 1}`, c.initialCapital, codes);
       c.groups.push(g);
-      engine.emit('state');
+      engine().emit('state');
       return { id: g.id, code: g.code };
     }));
     socket.on('admin:group:update', guard((f) => {
-      const c = engine.requireComp();
-      const g = Competition.findGroup(c, f.id);
+      const g = Competition.findGroup(engine().requireComp(), f.id);
       if (!g) throw new Error('المجموعة غير موجودة');
       if (f.name !== undefined) g.name = f.name;
-      engine.emit('state');
+      engine().emit('state');
     }));
     socket.on('admin:group:remove', guard((f) => {
-      const c = engine.requireComp();
+      const c = engine().requireComp();
       c.groups = c.groups.filter((g) => g.id !== f.id);
-      engine.emit('state');
+      engine().emit('state');
     }));
 
     // المال
-    socket.on('admin:cash', guard((f) => {
-      engine.adjustCash(f.groupId, f.amount);
-    }));
+    socket.on('admin:cash', guard((f) => { engine().adjustCash(f.groupId, f.amount); }));
 
     // التحكم في الجولات
-    socket.on('admin:start', guard(() => engine.start()));
-    socket.on('admin:pause', guard(() => engine.pause()));
-    socket.on('admin:resume', guard(() => engine.resume()));
-    socket.on('admin:endRound', guard(() => engine.endRoundNow()));
-    socket.on('admin:nextRound', guard(() => engine.nextRound()));
-    socket.on('admin:finish', guard(() => engine.finishNow()));
+    socket.on('admin:start', guard(() => engine().start()));
+    socket.on('admin:pause', guard(() => engine().pause()));
+    socket.on('admin:resume', guard(() => engine().resume()));
+    socket.on('admin:endRound', guard(() => engine().endRoundNow()));
+    socket.on('admin:nextRound', guard(() => engine().nextRound()));
+    socket.on('admin:finish', guard(() => engine().finishNow()));
     socket.on('admin:reset', guard(() => {
-      persist.clear();
-      engine.setCompetition(null);
-    }));
-
-    // الرابط الأساسي
-    socket.on('admin:setBaseUrl', guard((f) => {
-      engine.baseUrl = (f.baseUrl || '').trim() || null;
-      engine.emit('state');
+      // إعادة تعيين = إغلاق الغرفة الحالية
+      const r = room();
+      rm.remove(r.id);
+      persist.save(rm.snapshot());
+      socket.data.roomId = null; socket.data.isHost = false;
     }));
   }
 
   return { pushAll };
 }
 
-module.exports = { attachSockets, ADMIN_PIN };
+module.exports = { attachSockets };

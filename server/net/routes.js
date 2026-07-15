@@ -2,78 +2,67 @@
 
 const express = require('express');
 const QRCode = require('qrcode');
-const Competition = require('../engine/Competition');
+const settings = require('../state/settings');
 
 /**
- * يبني الرابط الأساسي (Base URL) بأولوية:
- *   1) تجاوز الأدمن اليدوي (engine.baseUrl)
- *   2) متغير البيئة BASE_URL
- *   3) الاكتشاف التلقائي من ترويسات الطلب (يدعم البروكسي السحابي)
+ * يبني الرابط الأساسي بأولوية: تجاوز يدوي → BASE_URL → اكتشاف تلقائي من الطلب.
  */
-function resolveBase(engine, req) {
-  const override = engine.baseUrl || process.env.BASE_URL;
+function resolveBase(req) {
+  const override = settings.baseUrl;
   if (override) return String(override).replace(/\/+$/, '');
   const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   return `${proto}://${host}`;
 }
-
-function joinUrl(engine, req, code) {
-  return `${resolveBase(engine, req)}/player?code=${encodeURIComponent(code)}`;
+function joinUrl(req, code) {
+  return `${resolveBase(req)}/player?code=${encodeURIComponent(code)}`;
 }
 
-function createRouter(engine) {
+function createRouter(rm) {
   const router = express.Router();
 
-  // إعدادات عامة للواجهات
+  // فحص صحّة سريع (يستخدمه منبّه الإبقاء يقظًا)
+  router.get('/healthz', (req, res) => res.type('text').send('ok'));
+
   router.get('/api/config', (req, res) => {
-    res.json({
-      baseUrl: resolveBase(engine, req),
-      hasCompetition: !!engine.comp,
-      requiresPin: !!process.env.ADMIN_PIN || true,
-    });
+    res.json({ baseUrl: resolveBase(req), rooms: rm.count() });
   });
 
-  // التحقق من صحة كود مجموعة (تستخدمه صفحة المتسابق قبل الاتصال)
+  // التحقق من وجود غرفة (تستخدمه شاشة العرض)
+  router.get('/api/room/:roomId', (req, res) => {
+    const r = rm.get(req.params.roomId);
+    if (!r) return res.status(404).json({ ok: false, error: 'الغرفة غير موجودة' });
+    res.json({ ok: true, roomId: r.id, name: r.engine.comp ? r.engine.comp.name : 'بورصة رواحل' });
+  });
+
+  // التحقق من كود مجموعة (يبحث عبر كل الغرف)
   router.get('/api/group/:code', (req, res) => {
-    if (!engine.comp) return res.status(404).json({ ok: false, error: 'لا توجد منافسة نشطة' });
-    const group = Competition.findGroupByCode(engine.comp, req.params.code);
-    if (!group) return res.status(404).json({ ok: false, error: 'كود المجموعة غير صحيح' });
-    res.json({ ok: true, groupId: group.id, name: group.name, competition: engine.comp.name });
+    const found = rm.findByGroupCode(req.params.code);
+    if (!found) return res.status(404).json({ ok: false, error: 'كود المجموعة غير صحيح' });
+    res.json({ ok: true, roomId: found.room.id, groupId: found.group.id, name: found.group.name });
   });
 
-  // رابط انضمام المجموعة (لنسخه من لوحة الأدمن)
+  // رابط انضمام المجموعة
   router.get('/api/join-url/:code', (req, res) => {
-    res.json({ url: joinUrl(engine, req, req.params.code) });
+    res.json({ url: joinUrl(req, req.params.code) });
   });
 
-  // رمز QR بصيغة PNG لكل مجموعة عبر كودها
+  // رمز QR (PNG) لكل مجموعة عبر كودها
   router.get('/api/qr/:code.png', async (req, res) => {
     try {
-      const url = joinUrl(engine, req, req.params.code);
-      const png = await QRCode.toBuffer(url, {
-        type: 'png',
-        width: 320,
-        margin: 1,
-        color: { dark: '#0b1220', light: '#ffffff' },
+      const png = await QRCode.toBuffer(joinUrl(req, req.params.code), {
+        type: 'png', width: 320, margin: 1, color: { dark: '#141c2e', light: '#ffffff' },
       });
       res.set('Content-Type', 'image/png');
       res.set('Cache-Control', 'no-store');
       res.send(png);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
-  // رمز QR كـ data-url (للاستخدام داخل صفحات العرض إن لزم)
-  router.get('/api/qr-data/:code', async (req, res) => {
-    try {
-      const url = joinUrl(engine, req, req.params.code);
-      const dataUrl = await QRCode.toDataURL(url, { width: 320, margin: 1 });
-      res.json({ dataUrl, url });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
+  // ضبط الرابط الأساسي يدويًا (عام لكل الغرف)
+  router.post('/api/base-url', express.json(), (req, res) => {
+    settings.baseUrl = (req.body && req.body.baseUrl ? String(req.body.baseUrl).trim() : '') || null;
+    res.json({ ok: true, baseUrl: settings.baseUrl });
   });
 
   return router;

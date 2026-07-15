@@ -13,8 +13,12 @@
   <div id="startOverlay" class="overlay">
     <div class="overlay-inner">
       <div class="brand" style="font-size:30px; justify-content:center;"><span class="dot"></span> بورصة رواحل</div>
-      <p class="muted">شاشة العرض الرئيسية</p>
+      <p class="muted" id="startMsg">شاشة العرض الرئيسية</p>
       <button id="startBtn" class="btn btn-accent" style="font-size:18px; padding:14px 34px; margin-top:14px;">▶ بدء العرض</button>
+      <div id="roomEntry" class="hidden" style="margin-top:16px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+        <input id="roomInput" class="mono" placeholder="رمز الغرفة" style="max-width:200px; text-transform:uppercase;" />
+        <button id="roomGo" class="btn btn-primary">عرض الغرفة</button>
+      </div>
     </div>
   </div>
 

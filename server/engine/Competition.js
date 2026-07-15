@@ -65,7 +65,8 @@ function createCompetition(opts = {}) {
     (s) => makeStock(s.name, s.price)
   );
 
-  const codes = new Set();
+  // أكواد محجوزة (فريدة عبر كل الغرف) لتفادي تعارض أكواد المجموعات
+  const codes = new Set(opts.reservedCodes || []);
   const groups = [];
   for (let i = 1; i <= groupCount; i += 1) {
     const g = makeGroup(`المجموعة ${i}`, initialCapital, codes);
