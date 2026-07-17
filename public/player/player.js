@@ -32,6 +32,12 @@
     });
     socket.on('round:open', function () { Sound.roundStart(); });
     socket.on('round:transition', function () { Sound.roundEnd(); });
+    socket.on('room:closed', function () {
+      setBanner('أُغلقت هذه الغرفة من قِبل المشرف', true);
+      var g = document.getElementById('gameScreen'); if (g) g.classList.add('hidden');
+      var j = document.getElementById('joinScreen'); if (j) j.classList.remove('hidden');
+      joinErr.textContent = 'أُغلقت الغرفة';
+    });
     socket.on('disconnect', function () { setBanner('انقطع الاتصال — تتم إعادة المحاولة...', true); });
   }
 

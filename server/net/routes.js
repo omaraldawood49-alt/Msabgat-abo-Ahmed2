@@ -59,6 +59,19 @@ function createRouter(rm) {
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  // باركود شاشة العرض لغرفة (يفتح /display?room=ID عند مسحه)
+  router.get('/api/room-qr/:roomId.png', async (req, res) => {
+    const r = rm.get(req.params.roomId);
+    if (!r) return res.status(404).json({ error: 'الغرفة غير موجودة' });
+    try {
+      const url = `${resolveBase(req)}/display?room=${encodeURIComponent(r.id)}`;
+      const png = await QRCode.toBuffer(url, { type: 'png', width: 340, margin: 1, color: { dark: '#141c2e', light: '#ffffff' } });
+      res.set('Content-Type', 'image/png');
+      res.set('Cache-Control', 'no-store');
+      res.send(png);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   // ضبط الرابط الأساسي يدويًا (عام لكل الغرف)
   router.post('/api/base-url', express.json(), (req, res) => {
     settings.baseUrl = (req.body && req.body.baseUrl ? String(req.body.baseUrl).trim() : '') || null;

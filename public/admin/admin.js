@@ -150,15 +150,24 @@
   var qrModal = document.getElementById('qrModal');
   document.getElementById('qrClose').onclick = function () { qrModal.classList.add('hidden'); };
   qrModal.addEventListener('click', function (e) { if (e.target === qrModal) qrModal.classList.add('hidden'); });
+  function openQr(title, imgSrc, code, url) {
+    document.getElementById('qrTitle').textContent = title;
+    document.getElementById('qrCode').textContent = code;
+    document.getElementById('qrImg').src = imgSrc;
+    document.getElementById('qrUrl').textContent = url || '';
+    qrModal.classList.remove('hidden');
+  }
   function showQR(group) {
-    document.getElementById('qrTitle').textContent = group.name;
-    document.getElementById('qrCode').textContent = group.code;
-    document.getElementById('qrImg').src = '/api/qr/' + group.code + '.png?t=' + Date.now();
+    openQr(group.name, '/api/qr/' + group.code + '.png?t=' + Date.now(), group.code, '');
     fetch('/api/join-url/' + group.code).then(function (r) { return r.json(); }).then(function (d) {
       document.getElementById('qrUrl').textContent = d.url;
     });
-    qrModal.classList.remove('hidden');
   }
+  document.getElementById('riShareQr').onclick = function () {
+    if (!currentRoom) return;
+    var link = location.origin + '/display?room=' + currentRoom;
+    openQr('باركود شاشة العرض — غرفة ' + currentRoom, '/api/room-qr/' + currentRoom + '.png?t=' + Date.now(), currentRoom, link);
+  };
 
   // ---------- العرض ----------
   var lastCompId = null;
