@@ -32,7 +32,7 @@ function createRouter(rm) {
   router.get('/api/room/:roomId', (req, res) => {
     const r = rm.get(req.params.roomId);
     if (!r) return res.status(404).json({ ok: false, error: 'الغرفة غير موجودة' });
-    res.json({ ok: true, roomId: r.id, name: r.engine.comp ? r.engine.comp.name : 'بورصة رواحل' });
+    res.json({ ok: true, roomId: r.id, name: r.engine.comp ? r.engine.comp.name : 'بورصة الأسهم' });
   });
 
   // التحقق من كود مجموعة (يبحث عبر كل الغرف)

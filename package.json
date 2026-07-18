@@ -1,7 +1,7 @@
 {
   "name": "msabgat-alashum",
   "version": "1.0.0",
-  "description": "بورصة رواحل - Educational Stock Market Competition Game",
+  "description": "بورصة الأسهم - Educational Stock Market Competition Game",
   "main": "server/index.js",
   "type": "commonjs",
   "scripts": {

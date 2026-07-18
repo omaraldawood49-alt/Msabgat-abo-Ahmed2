@@ -47,7 +47,7 @@ setInterval(() => rm.cleanup(), 30 * 60 * 1000);
 
 server.listen(PORT, () => {
   console.log('==================================================');
-  console.log('  بورصة رواحل — Educational Stock Market (غرف متعددة)');
+  console.log('  بورصة الأسهم — Educational Stock Market (غرف متعددة)');
   console.log('==================================================');
   console.log(`  الخادم يعمل على المنفذ: ${PORT}`);
   console.log(`  الصفحة الرئيسية: http://localhost:${PORT}/`);
