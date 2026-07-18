@@ -166,3 +166,11 @@ label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 
 .toast-ok { border-color: var(--up); border-inline-start: 4px solid var(--up); }
 .toast-err { border-color: var(--down); border-inline-start: 4px solid var(--down); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* ---------- تكيّف اللمس: أهداف ≥44px على أجهزة اللمس فقط ----------
+   يُطبَّق على الجوّال/اللوحي (pointer: coarse) دون التأثير على الفأرة أو البروجكتر. */
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 44px; padding: 9px 14px; }
+  input, select { min-height: 44px; }
+}
