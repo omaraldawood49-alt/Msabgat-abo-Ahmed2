@@ -155,7 +155,9 @@
   function openQr(title, imgSrc, code, url) {
     document.getElementById('qrTitle').textContent = title;
     document.getElementById('qrCode').textContent = code;
-    document.getElementById('qrImg').src = imgSrc;
+    var img = document.getElementById('qrImg');
+    img.src = imgSrc;
+    img.alt = 'رمز QR — ' + title;
     document.getElementById('qrUrl').textContent = url || '';
     qrModal.classList.remove('hidden');
   }
@@ -225,13 +227,13 @@
       : 'النمط تلقائي: تتغيّر الأسعار حسب العرض والطلب.';
     wrap.innerHTML = '';
     state.stocks.forEach(function (st) {
-      var nameIn = el('input', { value: st.name });
+      var nameIn = el('input', { value: st.name, 'aria-label': 'اسم السهم' });
       nameIn.addEventListener('change', function () { send('admin:stock:update', { id: st.id, name: nameIn.value }); });
-      var priceIn = el('input', { type: 'number', step: '0.01', value: st.price });
+      var priceIn = el('input', { type: 'number', step: '0.01', value: st.price, 'aria-label': 'سعر السهم' });
       priceIn.addEventListener('change', function () { send('admin:stock:update', { id: st.id, price: priceIn.value }); });
       var actions = el('div', { class: 'st-actions' }, [
-        manual ? el('button', { class: 'btn btn-sm btn-ghost', text: '⚙ الجولات', onclick: function () { toggleManual(st, row); } }) : null,
-        el('button', { class: 'btn btn-sm btn-sell', text: '🗑', onclick: function () { if (confirm('حذف «' + st.name + '»؟')) send('admin:stock:remove', { id: st.id }); } })
+        manual ? el('button', { class: 'btn btn-sm btn-ghost', text: '⚙ الجولات', 'aria-label': 'ضبط نِسَب الجولات للسهم', onclick: function () { toggleManual(st, row); } }) : null,
+        el('button', { class: 'btn btn-sm btn-sell', text: '🗑', 'aria-label': 'حذف السهم', title: 'حذف السهم', onclick: function () { if (confirm('حذف السهم «' + st.name + '»؟')) send('admin:stock:remove', { id: st.id }); } })
       ]);
       var row = el('div', { class: 'strow' }, [
         el('div', {}, [el('div', { class: 'lbl-mini' }, ['الاسم']), nameIn]),
@@ -249,7 +251,7 @@
     var inputs = [], grid = el('div', { class: 'manual-grid' });
     for (var i = 0; i < 10; i++) {
       var v = (st.manualChanges && st.manualChanges[i] != null) ? st.manualChanges[i] : 0;
-      var inp = el('input', { type: 'number', step: '0.5', value: v });
+      var inp = el('input', { type: 'number', step: '0.5', value: v, 'aria-label': 'نسبة تغيّر السهم في الجولة ' + (i + 1) + ' بالمئة' });
       inputs.push(inp);
       grid.appendChild(el('div', { class: 'mcell' }, [el('label', {}, ['ج' + (i + 1)]), inp]));
     }
@@ -265,18 +267,18 @@
     document.getElementById('groupCount').textContent = '(' + state.groups.length + ')';
     wrap.innerHTML = '';
     state.groups.forEach(function (g) {
-      var nameIn = el('input', { value: g.name, style: 'max-width:200px;' });
+      var nameIn = el('input', { value: g.name, style: 'max-width:200px;', 'aria-label': 'اسم المجموعة' });
       nameIn.addEventListener('change', function () { send('admin:group:update', { id: g.id, name: nameIn.value }); });
       var rankCls = g.rank <= 3 ? ' rank-' + g.rank : '';
       var pnlCls = g.pnl > 0 ? 'up' : g.pnl < 0 ? 'down' : 'flat';
-      var amountIn = el('input', { type: 'number', placeholder: 'مبلغ', style: 'max-width:120px;' });
+      var amountIn = el('input', { type: 'number', placeholder: 'مبلغ', style: 'max-width:120px;', 'aria-label': 'مبلغ للإضافة أو الخصم لهذه المجموعة' });
       var card = el('div', { class: 'gcard' }, [
         el('div', { class: 'gcard-top' }, [
           el('div', { class: 'gcard-name' }, [el('span', { class: 'rank-pill' + rankCls }, ['#' + g.rank]), nameIn]),
           el('div', { style: 'display:flex; gap:8px; align-items:center;' }, [
             el('span', { class: 'gcode' }, [g.code]),
-            el('button', { class: 'btn btn-sm', text: '📱 QR', onclick: function () { showQR(g); } }),
-            el('button', { class: 'btn btn-sm btn-sell', text: '🗑', onclick: function () { if (confirm('حذف «' + g.name + '»؟')) send('admin:group:remove', { id: g.id }); } })
+            el('button', { class: 'btn btn-sm', text: '📱 QR', 'aria-label': 'عرض رمز QR لانضمام المجموعة', onclick: function () { showQR(g); } }),
+            el('button', { class: 'btn btn-sm btn-sell', text: '🗑', 'aria-label': 'حذف المجموعة', title: 'حذف المجموعة', onclick: function () { if (confirm('حذف المجموعة «' + g.name + '»؟')) send('admin:group:remove', { id: g.id }); } })
           ])
         ]),
         el('div', { class: 'gstats' }, [

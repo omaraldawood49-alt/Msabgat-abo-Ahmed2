@@ -149,6 +149,7 @@
     var qty = qtyMemory[st.id] || 1;
     var qtyInput = el('input', {
       class: 'qty-input', type: 'number', min: '1', step: '1', value: qty, inputmode: 'numeric',
+      'aria-label': 'الكمية المطلوبة لسهم ' + st.name,
       oninput: function () { qtyMemory[st.id] = Math.max(1, parseInt(this.value || '1', 10)); }
     });
     var buyBtn = el('button', { class: 'btn btn-buy btn-sm', text: 'شراء', onclick: function () { trade(st.id, 'buy', qtyInput.value); } });
