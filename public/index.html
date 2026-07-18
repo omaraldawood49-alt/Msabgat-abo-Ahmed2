@@ -3,56 +3,108 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>بورصة رواحل</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E" />
+  <title>ألعاب رواحل التفاعلية</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AE%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/shared/theme.css" />
   <style>
-    .hub { max-width: 820px; margin: 0 auto; padding: 42px 20px 60px; }
+    .hub { max-width: 860px; margin: 0 auto; padding: 46px 20px 60px; }
     .hero { text-align: center; margin-bottom: 30px; }
-    .hero h1 { font-size: 36px; }
-    .hero .dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px var(--accent); margin-inline-start: 8px; }
-    .actions { display: grid; grid-template-columns: 1fr; gap: 16px; }
-    .act { display: flex; align-items: center; gap: 18px; padding: 22px 24px; text-decoration: none; color: var(--text);
+    .hero h1 { font-size: 34px; }
+    .hero .dot { display: inline-block; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px var(--accent); margin-inline-start: 8px; }
+
+    /* بوابة اختيار اللعبة */
+    .games { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+    .game { padding: 30px 24px; text-align: center; text-decoration: none; color: var(--text); display: block;
+      transition: transform .14s ease, border-color .15s, box-shadow .15s; cursor: pointer; }
+    .game:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
+    .game .ico { font-size: 60px; margin-bottom: 12px; }
+    .game h3 { font-size: 24px; margin: 0 0 6px; }
+    .game p { color: var(--text-dim); font-size: 14.5px; margin: 0; }
+    .game.rawahil:hover { border-color: var(--accent-2); }
+    .game.alghaam:hover { border-color: var(--pink); }
+    .badge-ext { display: inline-block; margin-top: 12px; font-size: 12px; font-weight: 800; color: var(--pink); }
+
+    /* إجراءات رواحل */
+    .actions { display: grid; grid-template-columns: 1fr; gap: 15px; }
+    .act { display: flex; align-items: center; gap: 18px; padding: 20px 22px; text-decoration: none; color: var(--text);
       transition: transform .12s ease, border-color .15s, box-shadow .15s; }
     .act:hover { transform: translateY(-3px); border-color: var(--accent-2); box-shadow: var(--shadow-lg); }
-    .act .ico { font-size: 40px; flex: 0 0 auto; width: 68px; height: 68px; display: flex; align-items: center; justify-content: center;
-      border-radius: 16px; }
-    .act .txt h3 { font-size: 21px; margin: 0 0 3px; }
-    .act .txt p { color: var(--text-dim); font-size: 14.5px; margin: 0; }
+    .act .ico { font-size: 34px; flex: 0 0 auto; width: 62px; height: 62px; display: flex; align-items: center; justify-content: center; border-radius: 15px; }
+    .act .txt h3 { font-size: 20px; margin: 0 0 3px; } .act .txt p { color: var(--text-dim); font-size: 14px; margin: 0; }
     .act .go { margin-inline-start: auto; font-size: 22px; color: var(--text-faint); }
     .a-new .ico { background: linear-gradient(180deg,#ffcf5a,#f5a524); }
     .a-join .ico { background: linear-gradient(180deg,#2ee59d,#12a869); }
     .a-resume .ico { background: linear-gradient(180deg,#8b7bff,#6d5efc); }
-    .foot { text-align: center; margin-top: 26px; color: var(--text-dim); font-size: 13.5px; }
+    .back { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; color: var(--accent-2);
+      font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; margin-bottom: 14px; }
+    .foot { text-align: center; margin-top: 22px; color: var(--text-dim); font-size: 13.5px; }
     .foot b { color: var(--text); }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
   <div class="hub">
-    <div class="hero">
-      <h1>بورصة رواحل <span class="dot"></span></h1>
-      <p class="muted">لعبة جماعية تحاكي سوق الأسهم — اختر ما تريد وابدأ. يمكن تشغيل عدة غرف في وقت واحد.</p>
-    </div>
+    <!-- بوابة اختيار اللعبة -->
+    <section id="pickGame">
+      <div class="hero">
+        <h1>اختر لعبتك <span class="dot"></span></h1>
+        <p class="muted">منصّة ألعاب جماعية تفاعلية — اختر اللعبة ثم ابدأ.</p>
+      </div>
+      <div class="games">
+        <div class="panel game rawahil" id="cardRawahil" role="button" tabindex="0">
+          <div class="ico">📈</div>
+          <h3>بورصة رواحل</h3>
+          <p>محاكاة سوق الأسهم — العرض والطلب والاستثمار وإدارة رأس المال</p>
+        </div>
+        <a class="panel game alghaam" id="cardAlghaam" href="https://alasom-game.onrender.com" target="_blank" rel="noopener">
+          <div class="ico">💣</div>
+          <h3>مسابقة الألغام</h3>
+          <p>لعبة أسئلة جماعية — اصنع لغمًا للبقية وأصب الصحيح</p>
+          <span class="badge-ext">يفتح في موقعه ↗</span>
+        </a>
+      </div>
+    </section>
 
-    <div class="actions">
-      <a class="panel act a-new" href="/admin">
-        <div class="ico">🆕</div>
-        <div class="txt"><h3>إنشاء غرفة جديدة</h3><p>ابدأ منافسة جديدة، اضبط الجولات والمجموعات، وتحكّم بها بالكامل</p></div>
-        <div class="go">‹</div>
-      </a>
-      <a class="panel act a-join" href="/player">
-        <div class="ico">🎮</div>
-        <div class="txt"><h3>الدخول كلاعب</h3><p>ادخل بكود مجموعتك أو امسح رمز QR وابدأ التداول</p></div>
-        <div class="go">‹</div>
-      </a>
-      <a class="panel act a-resume" href="/admin?resume=1">
-        <div class="ico">↩️</div>
-        <div class="txt"><h3>استكمال لعبة</h3><p>أكمل إدارة غرفتك بإدخال رمز الغرفة ورمز التحكّم</p></div>
-        <div class="go">‹</div>
-      </a>
-    </div>
-
-    <div class="foot">📊 <b>شاشة العرض</b> (للبروجكتر) تُفتح برمز الغرفة من داخل لوحة الأدمن بعد إنشاء الغرفة.</div>
+    <!-- إجراءات بورصة رواحل -->
+    <section id="rawahilActions" class="hidden">
+      <button class="back" id="backBtn">→ رجوع لاختيار اللعبة</button>
+      <div class="hero" style="margin-bottom:22px;">
+        <h1>بورصة رواحل <span class="dot"></span></h1>
+        <p class="muted">اختر ما تريد وابدأ. يمكن تشغيل عدة غرف في وقت واحد.</p>
+      </div>
+      <div class="actions">
+        <a class="panel act a-new" href="/admin">
+          <div class="ico">🆕</div>
+          <div class="txt"><h3>إنشاء غرفة جديدة</h3><p>ابدأ منافسة جديدة، اضبط الجولات والمجموعات، وتحكّم بها بالكامل</p></div>
+          <div class="go">‹</div>
+        </a>
+        <a class="panel act a-join" href="/player">
+          <div class="ico">🎮</div>
+          <div class="txt"><h3>الدخول كلاعب</h3><p>ادخل بكود مجموعتك أو امسح رمز QR وابدأ التداول</p></div>
+          <div class="go">‹</div>
+        </a>
+        <a class="panel act a-resume" href="/admin?resume=1">
+          <div class="ico">↩️</div>
+          <div class="txt"><h3>استكمال لعبة</h3><p>أكمل إدارة غرفتك بإدخال رمز الغرفة ورمز التحكّم</p></div>
+          <div class="go">‹</div>
+        </a>
+      </div>
+      <div class="foot">📊 <b>شاشة العرض</b> (للبروجكتر) تُفتح برمز الغرفة من داخل لوحة الأدمن بعد إنشاء الغرفة.</div>
+    </section>
   </div>
+
+  <script>
+    (function () {
+      var pick = document.getElementById('pickGame');
+      var actions = document.getElementById('rawahilActions');
+      function showActions() { pick.classList.add('hidden'); actions.classList.remove('hidden'); location.hash = 'rawahil'; }
+      function showPick() { actions.classList.add('hidden'); pick.classList.remove('hidden'); if (location.hash) history.replaceState(null, '', location.pathname); }
+      var card = document.getElementById('cardRawahil');
+      card.addEventListener('click', showActions);
+      card.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showActions(); } });
+      document.getElementById('backBtn').addEventListener('click', showPick);
+      if (location.hash === '#rawahil') showActions();
+    })();
+  </script>
 </body>
 </html>
