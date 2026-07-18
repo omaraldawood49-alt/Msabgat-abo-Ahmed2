@@ -301,5 +301,6 @@
     return a && container.contains(a) && (a.tagName === 'INPUT' || a.tagName === 'SELECT');
   }
 
+  if ((U.qs('resume') || '') === '1') seg('Resume');
   connect();
 })();
