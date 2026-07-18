@@ -1,18 +1,14 @@
-/* شاشة العرض — أرضية تداول ليلية + شبكة زجاجية (Glassmorphism) */
+/* شاشة العرض — أرضية تداول: لون داكن صلب ملتزم (بلا تدرّج) + شبكة زجاجية */
 body {
   overflow: hidden; height: 100vh; color: #fff;
-  background:
-    radial-gradient(1200px 700px at 84% -8%, rgba(124,107,255,.42), transparent 60%),
-    radial-gradient(1000px 640px at 6% 4%, rgba(192,38,166,.34), transparent 58%),
-    radial-gradient(1100px 800px at 50% 118%, rgba(8,145,178,.36), transparent 60%),
-    linear-gradient(150deg, #120a33 0%, #1a0e46 45%, #08213f 100%) fixed;
+  background: #0e0a2e;
 }
 
 /* ---------- طبقات عامة ---------- */
 .overlay {
   position: fixed; inset: 0; z-index: 1000;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, rgba(38,20,84,.95), rgba(20,32,86,.95) 55%, rgba(6,60,110,.95));
+  background: rgba(14,10,46,.94);
   backdrop-filter: blur(10px); color: #eef2ff;
 }
 .overlay .muted { color: #c3ccec; }
@@ -104,9 +100,9 @@ body {
 .pod .medal { font-size: 46px; }
 .pod .pname { font-size: 22px; font-weight: 800; }
 .pod .pwealth { font-size: 19px; font-weight: 700; }
-.pod.p1 { height: 260px; background: linear-gradient(180deg, rgba(255,213,74,.34), rgba(255,213,74,.08)); border: 1px solid var(--gold); animation-delay:.4s; }
-.pod.p2 { height: 210px; background: linear-gradient(180deg, rgba(207,216,230,.3), rgba(207,216,230,.06)); border: 1px solid var(--silver); animation-delay:.2s; }
-.pod.p3 { height: 175px; background: linear-gradient(180deg, rgba(214,138,76,.3), rgba(214,138,76,.06)); border: 1px solid var(--bronze); }
+.pod.p1 { height: 260px; background: rgba(255,213,74,.20); border: 1px solid var(--gold); animation-delay:.4s; }
+.pod.p2 { height: 210px; background: rgba(207,216,230,.18); border: 1px solid var(--silver); animation-delay:.2s; }
+.pod.p3 { height: 175px; background: rgba(214,138,76,.18); border: 1px solid var(--bronze); }
 @keyframes rise { from { transform: translateY(60px); opacity: 0; } to { transform: none; opacity: 1; } }
 .podium-rest { margin-top: 26px; display: flex; flex-direction: column; gap: 6px; align-items: center; color: #d7ddf5; }
 

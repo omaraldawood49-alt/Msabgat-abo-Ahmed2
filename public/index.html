@@ -14,18 +14,15 @@
 
     /* بوابة اختيار اللعبة */
     .games { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
-    .game { position: relative; padding: 34px 24px; text-align: center; text-decoration: none; color: var(--text); display: block; overflow: hidden;
+    .game { position: relative; padding: 34px 24px; text-align: center; text-decoration: none; color: var(--text); display: block;
       transition: transform .16s cubic-bezier(.2,.9,.3,1), border-color .18s, box-shadow .18s; cursor: pointer; }
-    .game::after { content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity .2s;
-      background: radial-gradient(360px 180px at 50% -10%, rgba(124,107,255,.28), transparent 70%); pointer-events: none; }
-    .game:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); }
-    .game:hover::after { opacity: 1; }
+    .game:hover { transform: translateY(-6px); }
     .game .ico { font-size: 62px; margin-bottom: 12px; filter: drop-shadow(0 6px 20px rgba(124,107,255,.4)); }
     .game h3 { font-size: 24px; margin: 0 0 6px; }
     .game p { color: var(--text-dim); font-size: 14.5px; margin: 0; }
-    .game.rawahil:hover { border-color: var(--accent-2); }
-    .game.alghaam:hover { border-color: var(--pink); }
-    .game.alghaam:hover::after { background: radial-gradient(360px 180px at 50% -10%, rgba(255,61,154,.26), transparent 70%); }
+    /* توهّج نيون صلب عند التمرير — box-shadow لا تدرّج */
+    .game.rawahil:hover { border-color: var(--accent-2); box-shadow: var(--shadow-lg), 0 0 36px rgba(124,107,255,.45); }
+    .game.alghaam:hover { border-color: var(--pink); box-shadow: var(--shadow-lg), 0 0 36px rgba(255,61,154,.42); }
     .badge-ext { display: inline-block; margin-top: 12px; font-size: 12px; font-weight: 800; color: var(--pink); }
 
     /* إجراءات رواحل */
@@ -36,9 +33,9 @@
     .act .ico { font-size: 34px; flex: 0 0 auto; width: 62px; height: 62px; display: flex; align-items: center; justify-content: center; border-radius: 15px; }
     .act .txt h3 { font-size: 20px; margin: 0 0 3px; } .act .txt p { color: var(--text-dim); font-size: 14px; margin: 0; }
     .act .go { margin-inline-start: auto; font-size: 22px; color: var(--text-faint); }
-    .a-new .ico { background: linear-gradient(180deg,#ffcf5a,#f5a524); }
-    .a-join .ico { background: linear-gradient(180deg,#2ee59d,#12a869); }
-    .a-resume .ico { background: linear-gradient(180deg,#8b7bff,#6d5efc); }
+    .a-new .ico { background: var(--accent); }
+    .a-join .ico { background: var(--up); }
+    .a-resume .ico { background: var(--accent-2); }
     .back { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; color: var(--accent-2);
       font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; margin-bottom: 14px; }
     .foot { text-align: center; margin-top: 22px; color: var(--text-dim); font-size: 13.5px; }

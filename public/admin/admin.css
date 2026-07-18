@@ -18,11 +18,10 @@
   position: sticky; top: 0; z-index: var(--z-sticky);
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
   padding: 13px 22px;
-  background: linear-gradient(180deg, #131e46 0%, #0d1533 100%);
+  background: var(--fest);            /* لون صلب — بلا تدرّج */
   color: #fff;
-  border-bottom: 2px solid transparent;
-  border-image: linear-gradient(90deg, var(--accent-2), var(--pink), var(--teal)) 1;
-  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  border-bottom: 3px solid var(--neon);
+  box-shadow: 0 10px 30px rgba(0,0,0,.45), 0 0 0 0 var(--neon);
 }
 .control-bar .cb-round, .control-bar .cb-round b { color: #fff; }
 .control-bar .cb-timer { color: var(--accent); text-shadow: 0 0 14px rgba(255,194,51,.5); }
