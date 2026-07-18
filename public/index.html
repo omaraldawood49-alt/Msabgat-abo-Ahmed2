@@ -7,21 +7,25 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AE%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/shared/theme.css" />
   <style>
-    .hub { max-width: 860px; margin: 0 auto; padding: 46px 20px 60px; }
-    .hero { text-align: center; margin-bottom: 30px; }
-    .hero h1 { font-size: 34px; }
-    .hero .dot { display: inline-block; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px var(--accent); margin-inline-start: 8px; }
+    .hub { max-width: 860px; margin: 0 auto; padding: 54px 20px 60px; }
+    .hero { text-align: center; margin-bottom: 34px; }
+    .hero h1 { font-size: clamp(34px, 7vw, 52px); letter-spacing: -0.02em; }
+    .hero .dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 20px var(--accent); margin-inline-start: 8px; }
 
     /* بوابة اختيار اللعبة */
     .games { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
-    .game { padding: 30px 24px; text-align: center; text-decoration: none; color: var(--text); display: block;
-      transition: transform .14s ease, border-color .15s, box-shadow .15s; cursor: pointer; }
-    .game:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
-    .game .ico { font-size: 60px; margin-bottom: 12px; }
+    .game { position: relative; padding: 34px 24px; text-align: center; text-decoration: none; color: var(--text); display: block; overflow: hidden;
+      transition: transform .16s cubic-bezier(.2,.9,.3,1), border-color .18s, box-shadow .18s; cursor: pointer; }
+    .game::after { content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity .2s;
+      background: radial-gradient(360px 180px at 50% -10%, rgba(124,107,255,.28), transparent 70%); pointer-events: none; }
+    .game:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); }
+    .game:hover::after { opacity: 1; }
+    .game .ico { font-size: 62px; margin-bottom: 12px; filter: drop-shadow(0 6px 20px rgba(124,107,255,.4)); }
     .game h3 { font-size: 24px; margin: 0 0 6px; }
     .game p { color: var(--text-dim); font-size: 14.5px; margin: 0; }
     .game.rawahil:hover { border-color: var(--accent-2); }
     .game.alghaam:hover { border-color: var(--pink); }
+    .game.alghaam:hover::after { background: radial-gradient(360px 180px at 50% -10%, rgba(255,61,154,.26), transparent 70%); }
     .badge-ext { display: inline-block; margin-top: 12px; font-size: 12px; font-weight: 800; color: var(--pink); }
 
     /* إجراءات رواحل */

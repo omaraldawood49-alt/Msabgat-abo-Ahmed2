@@ -7,24 +7,28 @@
 .seg.active { background: var(--panel-2); color: var(--text); box-shadow: var(--shadow); }
 
 .room-bar { display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: center; padding: 12px 22px;
-  background: linear-gradient(120deg, rgba(109,94,252,.10), rgba(14,165,233,.08)); border-bottom: 1px solid var(--border); }
+  background: rgba(124,107,255,.07); border-bottom: 1px solid var(--border); }
 .room-bar .ri { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-.room-bar .ri-l { color: var(--text-dim); font-size: 12px; }
-.room-bar .ri b { font-size: 18px; letter-spacing: 2px; }
+.room-bar .ri-l { color: var(--text-faint); font-size: 12px; }
+.room-bar .ri b { font-size: 18px; letter-spacing: 2px; color: var(--accent); }
 .room-bar .ri-link { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* شريط تحكّم مُلتزم داكن + توهّج نيون سفلي (بدل تدرّج pastel) */
 .control-bar {
-  position: sticky; top: 0; z-index: 50;
+  position: sticky; top: 0; z-index: var(--z-sticky);
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
-  padding: 12px 22px; background: var(--fest);
+  padding: 13px 22px;
+  background: linear-gradient(180deg, #131e46 0%, #0d1533 100%);
   color: #fff;
-  border-bottom: none; box-shadow: 0 6px 20px rgba(80,60,180,.18);
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, var(--accent-2), var(--pink), var(--teal)) 1;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
 }
 .control-bar .cb-round, .control-bar .cb-round b { color: #fff; }
-.control-bar .cb-timer { color: #ffe08a; }
-.control-bar .badge { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.25); color: #fff; }
-.control-bar .cb-mode { color: rgba(255,255,255,.85) !important; }
-.control-bar .btn-ghost { color: #fff; border-color: rgba(255,255,255,.35); }
+.control-bar .cb-timer { color: var(--accent); text-shadow: 0 0 14px rgba(255,194,51,.5); }
+.control-bar .badge { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.18); color: #eaf0ff; }
+.control-bar .cb-mode { color: rgba(255,255,255,.78) !important; }
+.control-bar .btn-ghost { color: #fff; border-color: rgba(255,255,255,.28); }
 .cb-status { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .cb-round { font-size: 15px; } .cb-round b { font-size: 18px; }
 .cb-timer { font-size: 18px; font-weight: 800; color: var(--accent); min-width: 42px; }
