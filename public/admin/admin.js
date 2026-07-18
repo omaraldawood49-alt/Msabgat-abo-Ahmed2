@@ -44,6 +44,8 @@
   function enterRoom(roomId, hostKey) {
     currentRoom = roomId;
     currentKey = hostKey || (localStorage.getItem(keyStore(roomId)) || '');
+    // تحديث بيانات الدخول حتى يُعاد ربط الهوست تلقائيًا بعد أي انقطاع (حتى لو أنشأ الغرفة توًّا)
+    if (socket) socket.auth = { role: 'admin', roomId: roomId, hostKey: currentKey };
     startScreen.classList.add('hidden');
     dashboard.classList.remove('hidden');
     var link = location.origin + '/display?room=' + roomId;
