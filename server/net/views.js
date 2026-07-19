@@ -5,6 +5,7 @@ const Competition = require('../engine/Competition');
 function baseMeta(comp) {
   return {
     id: comp.id,
+    room: comp.room || null,
     name: comp.name,
     status: comp.status,
     total: comp.questions.length,
@@ -21,7 +22,6 @@ function nameOf(comp, groupId) {
   return g ? g.name : '—';
 }
 
-/** عدد المجموعات التي كتبت لغمًا / اختارت. */
 function counts(comp) {
   const r = comp.round || {};
   return {
@@ -31,7 +31,14 @@ function counts(comp) {
   };
 }
 
-// -------------------- شاشة العرض --------------------
+/** من اختار خيارًا معيّنًا (أسماء). */
+function pickersOf(comp, optionId, exceptGroupId) {
+  return Object.entries(comp.round.picks || {})
+    .filter(([gid, oid]) => oid === optionId && gid !== exceptGroupId)
+    .map(([gid]) => nameOf(comp, gid));
+}
+
+// -------------------- شاشة العرض (شاشة مشتركة — بلا نص السؤال) --------------------
 function displayState(comp) {
   if (!comp) return { active: false };
   const q = Competition.currentQuestion(comp);
@@ -44,30 +51,21 @@ function displayState(comp) {
   if (!q) { out.question = null; return out; }
 
   const c = counts(comp);
-  const base = { text: q.text, category: q.category, points: q.points, timeLimitSec: q.timeLimitSec, phase: phase, answered: phase === 'lies' ? c.lies : c.picks, total: c.total };
+  // نص السؤال لا يظهر إلا عند المضيف — الشاشة المشتركة تُظهر التصنيف فقط
+  const base = { category: q.category, points: q.points, timeLimitSec: q.timeLimitSec, phase, answered: phase === 'lies' ? c.lies : c.picks, total: c.total };
 
   if (phase === 'lies') {
     out.question = base;
   } else if (phase === 'pick') {
-    out.question = Object.assign(base, {
-      options: (comp.round.options || []).map((o) => ({ id: o.id, text: o.text })),
-    });
+    out.question = Object.assign(base, { options: (comp.round.options || []).map((o) => ({ id: o.id, text: o.text })) });
   } else if (phase === 'revealed') {
     out.question = Object.assign(base, {
       answer: q.answer,
-      options: (comp.round.options || []).map((o) => {
-        const pickedBy = Object.entries(comp.round.picks || {})
-          .filter(([, oid]) => oid === o.id)
-          .map(([gid]) => nameOf(comp, gid));
-        return {
-          id: o.id,
-          text: o.text,
-          truth: o.kind === 'truth',
-          owners: (o.owners || []).map((gid) => nameOf(comp, gid)),
-          pickedBy: pickedBy,
-          pickCount: pickedBy.length,
-        };
-      }),
+      options: (comp.round.options || []).map((o) => ({
+        id: o.id, text: o.text, truth: o.kind === 'truth',
+        owners: (o.owners || []).map((gid) => nameOf(comp, gid)),
+        pickCount: pickersOf(comp, o.id).length,
+      })),
     });
   } else {
     out.question = base;
@@ -75,7 +73,7 @@ function displayState(comp) {
   return out;
 }
 
-// -------------------- شاشة المقدّم --------------------
+// -------------------- شاشة المضيف (يرى كل شيء بما فيه نص السؤال) --------------------
 function adminState(comp) {
   if (!comp) return { active: false };
   const q = Competition.currentQuestion(comp);
@@ -83,6 +81,7 @@ function adminState(comp) {
     paused: comp._paused === true,
     defaultTimeSec: comp.defaultTimeSec,
     defaultPoints: comp.defaultPoints,
+    categories: comp.categories || [],
     questions: comp.questions.map((qq, i) => ({
       id: qq.id, index: i, text: qq.text, answer: qq.answer,
       category: qq.category, timeLimitSec: qq.timeLimitSec, points: qq.points,
@@ -99,21 +98,23 @@ function adminState(comp) {
     lies: Object.entries(comp.round.lies || {}).map(([gid, l]) => ({ group: nameOf(comp, gid), text: l.text })),
   };
   if (comp.questionState === 'pick' || comp.questionState === 'revealed') {
-    cur.options = (comp.round.options || []).map((o) => {
-      const pickedBy = Object.entries(comp.round.picks || {})
-        .filter(([, oid]) => oid === o.id).map(([gid]) => nameOf(comp, gid));
-      return {
-        id: o.id, text: o.text, truth: o.kind === 'truth',
-        owners: (o.owners || []).map((gid) => nameOf(comp, gid)),
-        pickedBy: pickedBy, pickCount: pickedBy.length,
-      };
-    });
+    cur.options = (comp.round.options || []).map((o) => ({
+      id: o.id, text: o.text, truth: o.kind === 'truth',
+      owners: (o.owners || []).map((gid) => nameOf(comp, gid)),
+      pickedBy: pickersOf(comp, o.id),
+    }));
+  }
+  if (comp.questionState === 'revealed') {
+    // خريطة الأفخاخ: كل فخ ومن نصبه ومن وقع فيه
+    cur.trapMap = (comp.round.options || [])
+      .filter((o) => o.kind === 'lie')
+      .map((o) => ({ text: o.text, owners: (o.owners || []).map((gid) => nameOf(comp, gid)), caught: pickersOf(comp, o.id) }));
   }
   out.current = cur;
   return out;
 }
 
-// -------------------- جوال المجموعة --------------------
+// -------------------- جوال المشارك (بلا نص السؤال) --------------------
 function playerState(comp, group) {
   if (!comp || !group) return { active: false };
   const q = Competition.currentQuestion(comp);
@@ -127,33 +128,32 @@ function playerState(comp, group) {
 
   const phase = comp.questionState;
   const myLie = (comp.round.lies || {})[group.id] || null;
-  const base = { text: q.text, category: q.category, phase: phase };
+  const base = { category: q.category, phase }; // بلا نص السؤال
 
   if (phase === 'lies') {
     out.question = Object.assign(base, { myLie: myLie ? myLie.text : null });
   } else if (phase === 'pick') {
     out.question = Object.assign(base, {
       myPick: (comp.round.picks || {})[group.id] || null,
-      options: (comp.round.options || []).map((o) => ({
-        id: o.id, text: o.text, mine: Competition.ownsOption(o, group.id),
-      })),
+      options: (comp.round.options || []).map((o) => ({ id: o.id, text: o.text, mine: Competition.ownsOption(o, group.id) })),
     });
   } else if (phase === 'revealed') {
     const myPickId = (comp.round.picks || {})[group.id] || null;
     const myOpt = myPickId ? Competition.findOption(comp, myPickId) : null;
-    // كم وقع في لغمي؟
-    let myLieTakers = 0;
+    // من وقع في فخي
+    let myTrapTakers = [];
     for (const o of comp.round.options || []) {
-      if (Competition.ownsOption(o, group.id)) {
-        myLieTakers = Object.entries(comp.round.picks || {})
-          .filter(([gid, oid]) => oid === o.id && gid !== group.id).length;
-      }
+      if (Competition.ownsOption(o, group.id)) myTrapTakers = myTrapTakers.concat(pickersOf(comp, o.id, group.id));
     }
+    // في فخ من وقعت؟
+    let myTrapOwners = [];
+    if (myOpt && myOpt.kind === 'lie') myTrapOwners = (myOpt.owners || []).map((gid) => nameOf(comp, gid));
     out.question = Object.assign(base, {
       answer: q.answer,
       myPickCorrect: myOpt ? myOpt.kind === 'truth' : null,
       myLieText: myLie ? myLie.text : null,
-      myLieTakers: myLieTakers,
+      myTrapTakers: myTrapTakers,
+      myTrapOwners: myTrapOwners,
       awarded: (comp.round.awarded || {})[group.id] || 0,
       options: (comp.round.options || []).map((o) => ({
         id: o.id, text: o.text, truth: o.kind === 'truth',

@@ -6,6 +6,7 @@ const assert = require('node:assert');
 const Competition = require('../server/engine/Competition');
 const { scoreAnswer } = require('../server/engine/scoring');
 const { GameEngine } = require('../server/engine/GameEngine');
+const { RoomManager } = require('../server/engine/RoomManager');
 
 function newGame(opts) {
   const engine = new GameEngine();
@@ -122,4 +123,39 @@ test('groups self-join mid-game with zero score', () => {
   const g = engine.addGroup('متأخر');
   assert.strictEqual(g.score, 0);
   assert.ok(c.groups.indexOf(g) !== -1);
+});
+
+test('createCompetition filters by categories', () => {
+  const cats = Competition.listCategories();
+  assert.ok(cats.length > 0 && cats[0].name);
+  const pick = cats[0].name;
+  const engine = new GameEngine();
+  const c = engine.newCompetition({ useSeed: true, questionCount: 10, categories: [pick], groupCount: 0 });
+  assert.ok(c.questions.length > 0);
+  assert.ok(c.questions.every((q) => q.category === pick), 'كل الأسئلة من التصنيف المختار');
+});
+
+test('RoomManager creates independent rooms with unique codes and host tokens', () => {
+  const rm = new RoomManager();
+  const a = rm.createRoom({ useSeed: false, groupCount: 0 });
+  const b = rm.createRoom({ useSeed: false, groupCount: 0 });
+  assert.notStrictEqual(a.code, b.code);
+  assert.notStrictEqual(a.hostToken, b.hostToken);
+  assert.strictEqual(rm.getRoom(a.code).engine.comp.room, a.code);
+  // غرف مستقلة: مجموعة في A لا تظهر في B
+  a.engine.addGroup('نمور');
+  assert.strictEqual(a.engine.comp.groups.length, 1);
+  assert.strictEqual(b.engine.comp.groups.length, 0);
+});
+
+test('restart keeps groups (reset scores) and re-samples questions', () => {
+  const rm = new RoomManager();
+  const room = rm.createRoom({ useSeed: true, questionCount: 5, groupCount: 0 });
+  const g = room.engine.addGroup('فريق');
+  room.engine.adjustScore(g.id, 500);
+  room.engine.restart();
+  const kept = room.engine.comp.groups.find((x) => x.name === 'فريق');
+  assert.ok(kept, 'المجموعة باقية بعد إعادة اللعب');
+  assert.strictEqual(kept.score, 0, 'النقاط صُفّرت');
+  assert.strictEqual(room.engine.comp.currentIndex, -1);
 });

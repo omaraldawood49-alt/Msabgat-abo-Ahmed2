@@ -3,45 +3,163 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>مسابقة الأسئلة</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9D%93%3C/text%3E%3C/svg%3E" />
+  <title>لعبة الأفخاخ</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%B3%EF%B8%8F%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/shared/theme.css" />
   <style>
-    .hub { max-width: 880px; margin: 0 auto; padding: 40px 20px; }
-    .hero { text-align: center; margin-bottom: 34px; }
+    .hub { max-width: 720px; margin: 0 auto; padding: 34px 16px 60px; }
+    .hero { text-align: center; margin-bottom: 24px; }
     .hero h1 { font-size: 34px; }
-    .hero .dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px var(--accent); margin-inline-start: 8px; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
-    .card { padding: 26px 22px; text-align: center; text-decoration: none; color: var(--text); display: block; transition: transform .12s ease, border-color .15s; }
-    .card:hover { transform: translateY(-4px); border-color: var(--accent-2); }
-    .card .ico { font-size: 42px; margin-bottom: 10px; }
-    .card h3 { font-size: 20px; }
-    .card p { color: var(--text-dim); font-size: 14px; margin: 6px 0 0; }
+    .hero .dot { display: inline-block; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px var(--accent); margin-inline-start: 6px; }
+    .hero p { color: var(--text-dim); }
+    .choice { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+    .choice .btn { padding: 20px; font-size: 18px; flex-direction: column; gap: 6px; }
+    .choice .btn .ico { font-size: 30px; }
+    .panel-pad { padding: 20px; }
+    .resume { text-align: center; margin-bottom: 16px; }
+    .cats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .cat-chip { border: 1px solid var(--border); background: var(--panel-2); border-radius: 999px; padding: 8px 14px; cursor: pointer; font-weight: 700; font-size: 14px; user-select: none; transition: all .12s; }
+    .cat-chip.on { background: linear-gradient(180deg,#8b7bff,var(--accent-2)); color: #fff; border-color: transparent; }
+    .cat-chip .c { opacity: .6; font-size: 12px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .hidden { display: none !important; }
+    .code-input { text-align: center; letter-spacing: 6px; font-size: 24px; font-weight: 800; text-transform: uppercase; }
+    .sub { color: var(--text-dim); font-size: 13px; margin: 2px 0 10px; }
   </style>
 </head>
 <body>
   <div class="hub">
     <div class="hero">
-      <h1>مسابقة الألغام 💣 <span class="dot"></span></h1>
-      <p class="muted">لعبة أسئلة جماعية: اصنع لغمًا للبقية وأصِب الصحيح! — شاشة عرض، شاشة مقدّم، وجوال لكل مجموعة</p>
+      <h1>🕳️ لعبة الأفخاخ <span class="dot"></span></h1>
+      <p>انصب فخًّا للجميع، وأصِب الجواب الصحيح، وأوقِع خصومك! — غرف مستقلة لكل لعبة</p>
     </div>
-    <div class="cards">
-      <a class="panel card" href="/display">
-        <div class="ico">📺</div>
-        <h3>شاشة العرض</h3>
-        <p>للبروجكتر — السؤال والمؤقّت والترتيب</p>
-      </a>
-      <a class="panel card" href="/admin">
-        <div class="ico">🎛️</div>
-        <h3>شاشة المقدّم</h3>
-        <p>إدارة الأسئلة والمجموعات والتحكم الكامل</p>
-      </a>
-      <a class="panel card" href="/player">
-        <div class="ico">📱</div>
-        <h3>جوال المجموعة</h3>
-        <p>الدخول بالكود أو QR والإجابة</p>
-      </a>
+
+    <div id="resume" class="resume hidden">
+      <button id="btnResume" class="btn btn-accent">🔁 استئناف لعبتك: <b id="resumeCode"></b></button>
+    </div>
+
+    <div class="choice">
+      <button id="tabCreate" class="btn btn-primary"><span class="ico">🎮</span> إنشاء لعبة</button>
+      <button id="tabJoin" class="btn"><span class="ico">🙌</span> انضمام للعبة</button>
+    </div>
+
+    <!-- إنشاء -->
+    <div id="createPanel" class="panel panel-pad">
+      <div class="field"><label>اسم اللعبة</label><input id="cName" value="لعبة الأفخاخ" /></div>
+      <label>اختر التصنيفات (فارغ = كل التصنيفات)</label>
+      <div id="cCats" class="cats"></div>
+      <div class="row" style="margin-top:14px;">
+        <div class="field"><label>عدد الأسئلة</label><input id="cCount" type="number" min="1" max="50" value="10" /></div>
+        <div class="field"><label>مدة كل مرحلة (ثانية)</label><input id="cTime" type="number" min="10" max="300" value="45" /></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>نقاط السؤال</label><input id="cPoints" type="number" min="0" value="1000" /></div>
+        <div class="field"><label>مكافأة السرعة</label>
+          <select id="cSpeed"><option value="1">مفعّلة</option><option value="0">معطّلة</option></select>
+        </div>
+      </div>
+      <button id="btnCreate" class="btn btn-accent btn-block" style="font-size:18px; padding:14px;">🚀 إنشاء وبدء الاستضافة</button>
+      <p id="createErr" class="down center" style="min-height:18px;"></p>
+    </div>
+
+    <!-- انضمام -->
+    <div id="joinPanel" class="panel panel-pad hidden">
+      <div class="field">
+        <label>رمز اللعبة</label>
+        <p class="sub">اطلبه من مضيف اللعبة</p>
+        <input id="jCode" class="code-input" maxlength="4" placeholder="• • • •" autocomplete="off" />
+      </div>
+      <button id="btnJoin" class="btn btn-accent btn-block" style="font-size:18px; padding:14px;">دخول</button>
+      <p id="joinErr" class="down center" style="min-height:18px;"></p>
     </div>
   </div>
+
+  <div id="toast"></div>
+  <script src="/shared/util.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var el = U.el;
+    var selected = new Set();
+
+    // التبويبات
+    var createPanel = document.getElementById('createPanel');
+    var joinPanel = document.getElementById('joinPanel');
+    var tabCreate = document.getElementById('tabCreate');
+    var tabJoin = document.getElementById('tabJoin');
+    function setTab(create) {
+      createPanel.classList.toggle('hidden', !create);
+      joinPanel.classList.toggle('hidden', create);
+      tabCreate.className = 'btn ' + (create ? 'btn-primary' : '');
+      tabJoin.className = 'btn ' + (create ? '' : 'btn-primary');
+    }
+    tabCreate.onclick = function () { setTab(true); };
+    tabJoin.onclick = function () { setTab(false); };
+
+    // استئناف لعبة مستضافة سابقًا
+    try {
+      var last = localStorage.getItem('lastHostRoom');
+      if (last && localStorage.getItem('host_' + last)) {
+        document.getElementById('resume').classList.remove('hidden');
+        document.getElementById('resumeCode').textContent = last;
+        document.getElementById('btnResume').onclick = function () { location.href = '/admin?room=' + last; };
+      }
+    } catch (e) {}
+
+    // التصنيفات
+    fetch('/api/categories').then(function (r) { return r.json(); }).then(function (d) {
+      var wrap = document.getElementById('cCats');
+      (d.categories || []).forEach(function (c) {
+        var chip = el('div', { class: 'cat-chip' }, [c.name, el('span', { class: 'c' }, [' (' + c.count + ')'])]);
+        chip.onclick = function () {
+          if (selected.has(c.name)) { selected.delete(c.name); chip.classList.remove('on'); }
+          else { selected.add(c.name); chip.classList.add('on'); }
+        };
+        wrap.appendChild(chip);
+      });
+    }).catch(function () {});
+
+    // إنشاء لعبة
+    document.getElementById('btnCreate').onclick = function () {
+      var btn = this; btn.disabled = true;
+      document.getElementById('createErr').textContent = '';
+      var body = {
+        name: document.getElementById('cName').value || 'لعبة الأفخاخ',
+        categories: Array.from(selected),
+        questionCount: parseInt(document.getElementById('cCount').value, 10) || 10,
+        defaultTimeSec: parseInt(document.getElementById('cTime').value, 10) || 45,
+        defaultPoints: parseInt(document.getElementById('cPoints').value, 10) || 1000,
+        speedBonus: document.getElementById('cSpeed').value === '1'
+      };
+      fetch('/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json(); }).then(function (res) {
+          if (res && res.ok) {
+            try {
+              localStorage.setItem('host_' + res.room, res.hostToken);
+              localStorage.setItem('lastHostRoom', res.room);
+            } catch (e) {}
+            location.href = '/admin?room=' + res.room;
+          } else { document.getElementById('createErr').textContent = (res && res.error) || 'تعذّر الإنشاء'; btn.disabled = false; }
+        }).catch(function () { document.getElementById('createErr').textContent = 'تعذّر الاتصال'; btn.disabled = false; });
+    };
+
+    // انضمام
+    function doJoin() {
+      var code = (document.getElementById('jCode').value || '').trim().toUpperCase();
+      if (code.length < 3) { document.getElementById('joinErr').textContent = 'أدخل رمز اللعبة'; return; }
+      document.getElementById('joinErr').textContent = '';
+      fetch('/api/rooms/' + code).then(function (r) { return r.json(); }).then(function (res) {
+        if (res && res.ok) location.href = '/player?room=' + code;
+        else document.getElementById('joinErr').textContent = 'الغرفة غير موجودة';
+      }).catch(function () { document.getElementById('joinErr').textContent = 'تعذّر الاتصال'; });
+    }
+    document.getElementById('btnJoin').onclick = doJoin;
+    document.getElementById('jCode').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+
+    // رمز من الرابط (لو دخل عبر ?room=)
+    var urlRoom = U.qs('room');
+    if (urlRoom) { setTab(false); document.getElementById('jCode').value = urlRoom.toUpperCase(); }
+  })();
+  </script>
 </body>
 </html>

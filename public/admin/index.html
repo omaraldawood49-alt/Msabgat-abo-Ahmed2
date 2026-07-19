@@ -3,30 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>شاشة المقدّم — مسابقة الأسئلة</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9D%93%3C/text%3E%3C/svg%3E" />
+  <title>المضيف — لعبة الأفخاخ</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%B3%EF%B8%8F%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/shared/theme.css" />
   <link rel="stylesheet" href="/admin/admin.css" />
 </head>
 <body>
-  <!-- تسجيل الدخول (يظهر فقط إن فُعّل رمز) -->
-  <div id="loginScreen" class="login-wrap hidden">
-    <div class="panel login-box">
-      <div class="brand center" style="justify-content:center;"><span class="dot"></span> شاشة المقدّم</div>
-      <p class="muted center">أدخل رمز المقدّم للدخول</p>
-      <div class="field">
-        <input id="pinInput" type="password" placeholder="رمز المقدّم" autocomplete="off" />
-      </div>
-      <button id="loginBtn" class="btn btn-accent btn-block">دخول</button>
-      <p id="loginErr" class="down center" style="min-height:18px;"></p>
+  <!-- شاشة خطأ (لست المضيف / لا توجد غرفة) -->
+  <div id="errScreen" class="login-wrap hidden">
+    <div class="panel login-box center">
+      <div class="brand center" style="justify-content:center;"><span class="dot"></span> لعبة الأفخاخ</div>
+      <p id="errMsg" class="muted" style="margin:14px 0;">—</p>
+      <a href="/" class="btn btn-accent btn-block">الصفحة الرئيسية</a>
     </div>
   </div>
 
   <!-- اللوحة -->
   <div id="dashboard" class="hidden">
-    <!-- شريط التحكم -->
     <div class="control-bar">
       <div class="cb-status">
+        <span class="room-chip">الغرفة <b id="roomCode">—</b></span>
         <span class="badge" id="statusBadge">—</span>
         <span class="cb-round">السؤال <b id="cbNum">0</b><span id="cbTotal"></span></span>
         <span class="cb-timer mono" id="cbTimer"></span>
@@ -37,11 +33,9 @@
         <button id="btnReveal" class="btn btn-accent">👁 اكشف الإجابة</button>
         <button id="btnNext" class="btn btn-primary">⏩ التالي</button>
         <button id="btnFinish" class="btn btn-sm">🏁 إنهاء</button>
-        <button id="btnReset" class="btn btn-ghost btn-sm">🗑 جديدة</button>
       </div>
     </div>
 
-    <!-- التبويبات -->
     <div class="tabs">
       <button class="tab active" data-tab="live">🎬 اللعب</button>
       <button class="tab" data-tab="questions">❓ الأسئلة</button>
@@ -51,12 +45,12 @@
     <div class="tab-body">
       <!-- اللعب -->
       <section id="tab-live" class="tab-pane active">
-        <!-- لوحة الانضمام (قبل البدء) -->
         <div id="joinPanel" class="panel panel-pad join-panel hidden">
           <div class="join-left">
             <h2>👋 انضمّوا الآن</h2>
-            <p class="muted">اطلب من كل مجموعة أن تصوّر الرمز بكاميرا الجوال، تكتب اسمها، وتدخل.</p>
-            <div class="join-url-box">افتح: <b id="joinUrl">/player</b></div>
+            <p class="muted">صوّروا الرمز أو ادخلوا الرابط، اكتبوا اسم مجموعتكم، وادخلوا.</p>
+            <div class="room-big">رمز الغرفة: <b id="roomBig">—</b></div>
+            <div class="join-url-box">الرابط: <b id="joinUrl">/player</b></div>
             <div class="join-count"><span id="joinCount">0</span> مجموعة منضمّة</div>
             <div id="joinGroups" class="join-groups"></div>
             <p class="muted" style="margin-top:12px;">جاهز؟ اضغط <b>«ابدأ اللعبة»</b> بالأعلى.</p>
@@ -66,22 +60,22 @@
           </div>
         </div>
 
-        <!-- بطاقة السؤال الحالي -->
         <div id="liveCard" class="panel panel-pad hidden">
           <div class="live-head">
             <span class="q-cat" id="liveCat"></span>
             <span class="muted" id="liveAnswered"></span>
           </div>
+          <div class="host-only-tag">👁️ هذا السؤال يظهر لك فقط — اقرأه بصوتٍ للمشاركين</div>
           <h2 id="liveText" class="live-q">—</h2>
           <div id="liveAnswerBox" class="live-answer"></div>
           <div id="liveLies" class="live-lies"></div>
           <div id="liveOpts" class="live-opts"></div>
+          <div id="liveTrapMap" class="trap-map"></div>
           <p class="muted" id="liveHint" style="margin-top:14px;"></p>
         </div>
 
-        <div id="liveEmpty" class="panel panel-pad hidden"><p class="muted">لا توجد مسابقة — أنشئ واحدة من تبويب «الإعداد».</p></div>
+        <div id="liveEmpty" class="panel panel-pad hidden"><p class="muted">—</p></div>
 
-        <!-- الترتيب المباشر -->
         <div class="panel panel-pad" id="boardPanel" style="margin-top:14px;">
           <h3>🏆 الترتيب المباشر <span class="muted" id="groupCount"></span></h3>
           <div id="liveBoard" class="live-board"></div>
@@ -95,6 +89,7 @@
             <h3>الأسئلة <span class="muted" id="qCount"></span></h3>
             <button id="btnAddQuestion" class="btn btn-sm btn-primary">➕ إضافة سؤال</button>
           </div>
+          <p class="muted" style="margin-top:0;">الأسئلة اختيرت عشوائيًا من التصنيفات التي حددتها. يمكنك تعديلها أو إضافة أسئلتك.</p>
           <div id="questionList" class="question-list"></div>
         </div>
       </section>
@@ -102,45 +97,28 @@
       <!-- الإعداد -->
       <section id="tab-setup" class="tab-pane">
         <div class="panel panel-pad">
-          <h3>إنشاء مسابقة</h3>
+          <h3>إعدادات اللعبة</h3>
           <div class="grid2">
-            <div class="field"><label>اسم المسابقة</label><input id="setName" /></div>
-            <div class="field"><label>مدة السؤال (ثانية)</label><input id="setTime" type="number" min="5" max="300" value="20" /></div>
+            <div class="field"><label>اسم اللعبة</label><input id="setName" /></div>
+            <div class="field"><label>مدة كل مرحلة (ثانية)</label><input id="setTime" type="number" min="5" max="300" value="45" /></div>
             <div class="field"><label>نقاط السؤال</label><input id="setPoints" type="number" min="0" value="1000" /></div>
             <div class="field">
               <label>مكافأة السرعة</label>
-              <select id="setSpeed">
-                <option value="1">مفعّلة (الأسرع نقاطًا أكثر)</option>
-                <option value="0">معطّلة (نقاط ثابتة)</option>
-              </select>
+              <select id="setSpeed"><option value="1">مفعّلة</option><option value="0">معطّلة</option></select>
             </div>
-            <div class="field">
-              <label>مصدر الأسئلة</label>
-              <select id="setSeed">
-                <option value="1">من المكتبة (اختيار عشوائي)</option>
-                <option value="0">ابدأ فارغًا (أضف أسئلتك)</option>
-              </select>
-            </div>
-            <div class="field"><label>عدد الأسئلة (من المكتبة)</label><input id="setCount" type="number" min="1" max="50" value="10" /></div>
           </div>
           <div class="row-actions">
-            <button id="btnCreate" class="btn btn-accent">🆕 إنشاء مسابقة جديدة</button>
             <button id="btnSaveSettings" class="btn btn-primary">💾 حفظ التعديلات</button>
+            <button id="btnRestart" class="btn btn-accent">🔄 لعبة جديدة (أسئلة جديدة، نفس المشاركين)</button>
           </div>
-          <p class="muted" id="setupHint" style="margin-top:10px;"></p>
         </div>
-
         <div class="panel panel-pad" style="margin-top:14px;">
-          <h3>الرابط الأساسي</h3>
-          <p class="muted" style="margin-top:0;">يُكتشف تلقائيًا. عدّله فقط لو رموز QR لا تعمل من أجهزة المشاركين.</p>
-          <div style="display:flex; gap:8px;">
-            <input id="baseUrlInput" placeholder="http://192.168.1.10:3000" />
-            <button id="btnSaveBase" class="btn btn-primary btn-sm">حفظ</button>
+          <h3>روابط اللعبة</h3>
+          <div class="quick-links">
+            <div>📺 شاشة العرض المشتركة: <a id="lnkDisplay" href="#" target="_blank">/display</a></div>
+            <div>📱 رابط انضمام المشاركين: <a id="lnkPlayer" href="#" target="_blank">/player</a></div>
           </div>
-          <div class="quick-links" style="margin-top:12px;">
-            <div>📺 شاشة العرض: <a href="/display" target="_blank">/display</a></div>
-            <div>📱 صفحة الانضمام: <a href="/player" target="_blank">/player</a></div>
-          </div>
+          <button id="btnClose" class="btn btn-sell btn-sm" style="margin-top:12px;">🗑 إغلاق الغرفة نهائيًا</button>
         </div>
       </section>
     </div>

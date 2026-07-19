@@ -213,6 +213,26 @@ class GameEngine extends EventEmitter {
     return this.comp;
   }
 
+  /** لعبة جديدة في نفس الغرفة: أسئلة جديدة بنفس الإعدادات، مع إبقاء المشاركين وتصفير النقاط. */
+  restart() {
+    const old = this.requireComp();
+    const fresh = Competition.createCompetition({
+      name: old.name,
+      categories: old.categories,
+      defaultTimeSec: old.defaultTimeSec,
+      defaultPoints: old.defaultPoints,
+      speedBonus: old.speedBonus,
+      questionCount: old.questions.length || 10,
+      useSeed: true,
+      groupCount: 0,
+    });
+    fresh.room = old.room;
+    // إبقاء المجموعات (بأكوادها) مع تصفير النقاط
+    fresh.groups = old.groups.map((g) => Object.assign({}, g, { score: 0 }));
+    this.setCompetition(fresh);
+    return fresh;
+  }
+
   // -------------------- إجابات المجموعات --------------------
 
   /** تسجيل لغم (جواب مضلِّل) في مرحلة lies. يمكن تغييره حتى تنتهي المرحلة. */

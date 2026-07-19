@@ -76,18 +76,21 @@ function sample(arr, n) {
  */
 function createCompetition(opts = {}) {
   const {
-    name = 'مسابقة الألغام',
+    name = 'لعبة الأفخاخ',
     defaultTimeSec = 45,
     defaultPoints = 1000,
     speedBonus = true,
     groupCount = 0,
     useSeed = true,
     questionCount = 10,
+    categories = [],
   } = opts;
 
   const defaults = { defaultTimeSec, defaultPoints };
+  const cats = Array.isArray(categories) ? categories.filter(Boolean) : [];
+  const pool = cats.length ? SEED_QUESTIONS.filter((q) => cats.indexOf(q.category) !== -1) : SEED_QUESTIONS;
   const questions = useSeed
-    ? sample(SEED_QUESTIONS, clampInt(questionCount, 1, 50, 10)).map((q) => makeQuestion(q, defaults))
+    ? sample(pool.length ? pool : SEED_QUESTIONS, clampInt(questionCount, 1, 50, 10)).map((q) => makeQuestion(q, defaults))
     : [];
 
   const codes = new Set();
@@ -104,6 +107,7 @@ function createCompetition(opts = {}) {
     defaultTimeSec: clampInt(defaultTimeSec, 5, 300, 45),
     defaultPoints: clampInt(defaultPoints, 0, 100000, 1000),
     speedBonus: speedBonus !== false,
+    categories: cats,
     questions,
     groups,
 
@@ -119,6 +123,21 @@ function createCompetition(opts = {}) {
 
     createdAt: Date.now(),
   };
+}
+
+/** قائمة التصنيفات المتاحة في المكتبة مع عدد الأسئلة (للاختيار عند الإنشاء). */
+let _catCache = null;
+function listCategories() {
+  if (_catCache) return _catCache;
+  const map = new Map();
+  for (const q of SEED_QUESTIONS) {
+    map.set(q.category, (map.get(q.category) || 0) + 1);
+  }
+  _catCache = Array.from(map.entries())
+    .map(([name, count]) => ({ name, count }))
+    .filter((c) => c.count >= 10)
+    .sort((a, b) => b.count - a.count);
+  return _catCache;
 }
 
 function emptyRound() {
@@ -202,6 +221,7 @@ module.exports = {
   makeQuestion,
   makeGroup,
   createCompetition,
+  listCategories,
   emptyRound,
   findQuestion,
   findGroup,

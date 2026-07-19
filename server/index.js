@@ -5,9 +5,9 @@ const http = require('http');
 const express = require('express');
 const { Server } = require('socket.io');
 
-const { GameEngine } = require('./engine/GameEngine');
+const { RoomManager } = require('./engine/RoomManager');
 const { createRouter } = require('./net/routes');
-const { attachSockets, ADMIN_PIN, REQUIRE_PIN } = require('./net/sockets');
+const { attachSockets } = require('./net/sockets');
 const persist = require('./state/persist');
 
 const PORT = process.env.PORT || 3000;
@@ -19,28 +19,22 @@ app.use(express.json());
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: true } });
 
-// محرّك اللعبة (مصدر الحقيقة الوحيد)
-const engine = new GameEngine();
+// مدير الغرف (كل غرفة مسابقة مستقلة)
+const roomManager = new RoomManager();
 
-// استعادة مسابقة محفوظة إن وُجدت (مع تجاهل اللقطات القديمة غير المتوافقة مع نمط اللغم)
-const saved = persist.load();
-const compatible = saved && Array.isArray(saved.questions) && Array.isArray(saved.groups)
-  && (saved.questions.length === 0 || typeof saved.questions[0].answer === 'string');
-if (compatible) {
-  try {
-    engine.loadCompetition(saved);
-    console.log(`[boot] تم استعادة مسابقة محفوظة: «${saved.name}» (${saved.questions.length} سؤالًا)`);
-  } catch (err) {
-    console.error('[boot] تعذّر استعادة المسابقة المحفوظة:', err.message);
-  }
-} else if (saved) {
-  console.warn('[boot] لقطة محفوظة غير متوافقة — تم تجاهلها.');
-  persist.clear();
+// طبقة Socket.IO (تُعيد دالة ربط الغرف الجديدة بالبثّ)
+const { wireRoom } = attachSockets(io, roomManager);
+
+// استعادة الغرف المحفوظة إن وُجدت
+try {
+  const restored = roomManager.restore(persist.loadRooms(), wireRoom);
+  if (restored) console.log(`[boot] تم استعادة ${restored} غرفة محفوظة`);
+} catch (err) {
+  console.error('[boot] تعذّر استعادة الغرف:', err.message);
 }
 
-// REST + Socket.IO
-app.use(createRouter(engine));
-attachSockets(io, engine);
+// REST (يمرّر wireRoom لربط الغرف المنشأة حديثًا)
+app.use(createRouter(roomManager, wireRoom));
 
 // ملفات ثابتة
 app.use('/shared', express.static(path.join(PUBLIC_DIR, 'shared')));
@@ -48,33 +42,30 @@ app.use('/display', express.static(path.join(PUBLIC_DIR, 'display')));
 app.use('/admin', express.static(path.join(PUBLIC_DIR, 'admin')));
 app.use('/player', express.static(path.join(PUBLIC_DIR, 'player')));
 
-// صفحات الدخول الرئيسية
 app.get('/', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin', 'index.html')));
 app.get('/display', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'display', 'index.html')));
 app.get('/player', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'player', 'index.html')));
 
+// تنظيف الغرف الخاملة دوريًا
+const cleanupTimer = setInterval(() => roomManager.cleanupIdle(), 30 * 60 * 1000);
+if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
+
 server.listen(PORT, () => {
   console.log('==================================================');
-  console.log('  مسابقة الألغام — Team Trivia Bluff Game');
+  console.log('  لعبة الأفخاخ — Team Trap Game (غرف مستقلة)');
   console.log('==================================================');
   console.log(`  الخادم يعمل على المنفذ: ${PORT}`);
-  console.log(`  شاشة العرض:   http://localhost:${PORT}/display`);
-  console.log(`  شاشة المقدّم: http://localhost:${PORT}/admin   (${REQUIRE_PIN ? 'الرمز: ' + ADMIN_PIN : 'بدون رمز'})`);
-  console.log(`  جوال المجموعة: http://localhost:${PORT}/player`);
+  console.log(`  الصفحة الرئيسية: http://localhost:${PORT}/`);
   console.log('==================================================');
-  if (!REQUIRE_PIN) {
-    console.log('  ℹ️  شاشة المقدّم تفتح بلا رمز. لتفعيل رمز سري اضبط متغيّر البيئة ADMIN_PIN.');
-  }
 });
 
-// حفظ فوري عند الإيقاف
 function shutdown() {
-  persist.saveNow(engine.comp);
+  persist.saveRoomsNow(roomManager.serialize());
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 1500);
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-module.exports = { app, server, engine };
+module.exports = { app, server, roomManager };

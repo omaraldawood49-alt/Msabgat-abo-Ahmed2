@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>المجموعة — مسابقة الأسئلة</title>
+  <title>المشارك — لعبة الأفخاخ</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9D%93%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/shared/theme.css" />
   <style>
@@ -64,20 +64,24 @@
     .waitscreen h2 { font-size: 22px; margin: 8px 0; }
     .rankpill { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 6px 16px; font-weight: 800; margin-top: 10px; }
     .sound-toggle { background: transparent; border: none; font-size: 20px; cursor: pointer; }
+    .listen-card { text-align: center; }
+    .listen-emoji { font-size: 44px; margin-bottom: 4px; }
+    .room-label { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
   </style>
 </head>
 <body>
   <!-- شاشة الدخول -->
   <div id="joinScreen">
     <div class="panel join">
-      <div class="brand center" style="justify-content:center; margin-bottom:6px;"><span class="dot"></span> مسابقة الأسئلة</div>
+      <div class="brand center" style="justify-content:center; margin-bottom:6px;"><span class="dot"></span> لعبة الأفخاخ</div>
       <div class="join-emoji">🙌</div>
       <h1>اكتب اسم مجموعتك</h1>
-      <p class="muted" style="margin-top:-6px;">ثم اضغط «دخول» وانتظر بدء المقدّم</p>
+      <p class="muted" style="margin-top:-6px;">ثم اضغط «دخول» وانتظر بدء المضيف</p>
       <div class="field" style="margin-top:18px;">
         <input id="nameInput" class="name-input" maxlength="24" placeholder="مثال: النمور 🐯" autocomplete="off" />
       </div>
       <button id="joinBtn" class="btn btn-accent btn-block" style="font-size:18px; padding:14px;">🚀 دخول</button>
+      <div class="room-label" id="roomLabel"></div>
       <p id="joinErr" class="down" style="min-height:18px; margin-top:12px; font-size:14px;"></p>
     </div>
   </div>

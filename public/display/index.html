@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>شاشة العرض — مسابقة الأسئلة</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9D%93%3C/text%3E%3C/svg%3E" />
+  <title>شاشة العرض — لعبة الأفخاخ</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%B3%EF%B8%8F%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/shared/theme.css" />
   <link rel="stylesheet" href="/display/display.css" />
 </head>
@@ -12,8 +12,8 @@
   <!-- طبقة البدء (لتفعيل الصوت) -->
   <div id="startOverlay" class="overlay">
     <div class="overlay-inner">
-      <div class="brand" style="font-size:30px; justify-content:center;"><span class="dot"></span> مسابقة الأسئلة</div>
-      <p class="muted">شاشة العرض الرئيسية</p>
+      <div class="brand" style="font-size:30px; justify-content:center;"><span class="dot"></span> لعبة الأفخاخ</div>
+      <p class="muted">شاشة العرض المشتركة</p>
       <button id="startBtn" class="btn btn-accent" style="font-size:18px; padding:14px 34px; margin-top:14px;">▶ بدء العرض</button>
     </div>
   </div>
@@ -21,7 +21,7 @@
   <!-- الرأس -->
   <header class="dhead">
     <div class="dhead-title">
-      <div class="brand"><span class="dot"></span> <span id="compName">مسابقة الأسئلة</span></div>
+      <div class="brand"><span class="dot"></span> <span id="compName">لعبة الأفخاخ</span></div>
       <div class="market-status" id="marketStatus"><span class="live-dot"></span><span id="statusText">بانتظار البدء</span></div>
     </div>
     <div class="dhead-round">
@@ -44,6 +44,7 @@
       <div class="lobby-card panel">
         <h1 id="lobbyTitle">امسح الرمز وانضم!</h1>
         <p class="muted">صوّر رمز QR بكاميرا جوالك، اكتب اسم مجموعتك، وادخل</p>
+        <div class="lobby-room">رمز الغرفة: <b id="lobbyRoom">—</b></div>
         <img id="joinQr" class="lobby-qr" alt="QR للانضمام" />
         <div class="lobby-join">أو افتح <b id="joinUrl">/player</b></div>
         <div class="lobby-count"><span id="lobbyCount">0</span> مجموعة منضمّة</div>

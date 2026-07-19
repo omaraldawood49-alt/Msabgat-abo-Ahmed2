@@ -1,7 +1,7 @@
 {
   "name": "msabgat-asila",
   "version": "1.0.0",
-  "description": "مسابقة الألغام - Team trivia bluff game (Fibbage-style) with display, host & player screens",
+  "description": "لعبة الأفخاخ - Team trap trivia (Fibbage-style) with independent rooms, host-only questions & category picker",
   "main": "server/index.js",
   "type": "commonjs",
   "scripts": {
