@@ -87,7 +87,10 @@
         <div class="panel panel-pad">
           <div class="pane-head">
             <h3>الأسئلة <span class="muted" id="qCount"></span></h3>
-            <button id="btnAddQuestion" class="btn btn-sm btn-primary">➕ إضافة سؤال</button>
+            <div style="display:flex; gap:6px;">
+              <button id="btnBulkAdd" class="btn btn-sm btn-accent">📋 إضافة دفعة</button>
+              <button id="btnAddQuestion" class="btn btn-sm btn-primary">➕ إضافة سؤال</button>
+            </div>
           </div>
           <p class="muted" style="margin-top:0;">الأسئلة اختيرت عشوائيًا من التصنيفات التي حددتها. يمكنك تعديلها أو إضافة أسئلتك.</p>
           <div id="questionList" class="question-list"></div>
@@ -121,6 +124,21 @@
           <button id="btnClose" class="btn btn-sell btn-sm" style="margin-top:12px;">🗑 إغلاق الغرفة نهائيًا</button>
         </div>
       </section>
+    </div>
+  </div>
+
+  <!-- نافذة إضافة دفعة أسئلة -->
+  <div id="bulkModal" class="overlay hidden">
+    <div class="panel qedit-box">
+      <button id="bulkClose" class="qr-close">✕</button>
+      <h3>إضافة دفعة أسئلة</h3>
+      <p class="muted" style="margin-top:0;">اكتب كل سؤال في سطر بالصيغة: <b>السؤال | الجواب</b> — أو <b>السؤال؟ الجواب</b></p>
+      <div class="field">
+        <textarea id="bulkText" rows="10" placeholder="ما عاصمة اليابان؟ | طوكيو&#10;كم عدد قارات العالم؟ | سبع&#10;أطول نهر في العالم؟ النيل" style="width:100%; font-family:inherit; font-size:15px; padding:12px; border-radius:10px; border:1px solid var(--border); resize:vertical;"></textarea>
+      </div>
+      <div class="row-actions">
+        <button id="bulkSave" class="btn btn-accent">➕ أضف الكل</button>
+      </div>
     </div>
   </div>
 

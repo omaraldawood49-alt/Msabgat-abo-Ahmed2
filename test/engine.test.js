@@ -125,6 +125,31 @@ test('groups self-join mid-game with zero score', () => {
   assert.ok(c.groups.indexOf(g) !== -1);
 });
 
+test('auto-advance: lies -> pick when all groups submit, pick -> reveal when all pick', () => {
+  const { engine, c } = newGame({ speedBonus: false });
+  addQ(c, 'س؟', 'الصحيح', { points: 1000 });
+  const a = engine.addGroup('أ'), b = engine.addGroup('ب');
+  engine.start();
+  assert.strictEqual(c.questionState, 'lies');
+  engine.submitLie(a.id, 'فخ');
+  assert.strictEqual(c.questionState, 'lies', 'لا ينتقل قبل أن يُجيب الجميع');
+  engine.submitLie(b.id, 'آخر');
+  assert.strictEqual(c.questionState, 'pick', 'انتقل تلقائيًا بعد إجابة الجميع');
+
+  const truth = c.round.options.find((o) => o.kind === 'truth');
+  engine.submitPick(a.id, truth.id);
+  assert.strictEqual(c.questionState, 'pick', 'لا يكشف قبل اختيار الجميع');
+  engine.submitPick(b.id, truth.id);
+  assert.strictEqual(c.questionState, 'revealed', 'كشف تلقائيًا بعد اختيار الجميع');
+});
+
+test('createCompetition filters by difficulty', () => {
+  const engine = new GameEngine();
+  const c = engine.newCompetition({ useSeed: true, questionCount: 8, difficulties: ['صعب'], groupCount: 0 });
+  assert.ok(c.questions.length > 0);
+  assert.ok(c.questions.every((q) => q.difficulty === 'صعب'), 'كل الأسئلة صعبة');
+});
+
 test('createCompetition filters by categories', () => {
   const cats = Competition.listCategories();
   assert.ok(cats.length > 0 && cats[0].name);

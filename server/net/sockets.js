@@ -142,6 +142,33 @@ function attachSockets(io, roomManager) {
       if (f.points !== undefined && f.points !== '') q.points = Math.max(0, Math.min(100000, Number(f.points) || c.defaultPoints));
       engine.emit('state');
     }));
+    // إضافة دفعة أسئلة: كل سطر «السؤال | الجواب» (فاصل | أو = أو تبويب)، أو «السؤال؟ الجواب»
+    socket.on('admin:question:addBulk', guard((f) => {
+      const c = engine.requireComp();
+      const lines = String(f.text || '').split(/\r?\n/);
+      let added = 0;
+      for (const raw of lines) {
+        const line = raw.trim();
+        if (!line) continue;
+        let text = null;
+        let answer = null;
+        const sep = line.match(/^(.*?)\s*[|=\t]\s*(.+)$/);
+        if (sep) { text = sep[1].trim(); answer = sep[2].trim(); }
+        else {
+          const q = line.match(/^(.*[؟?])\s*(.+)$/); // ينتهي السؤال بعلامة استفهام ثم الجواب
+          if (q) { text = q[1].trim(); answer = q[2].trim(); }
+        }
+        if (!text || !answer) continue;
+        if (!/[؟?]$/.test(text)) text += '؟';
+        c.questions.push(Competition.makeQuestion(
+          { text: text, answer: answer, category: f.category || 'أسئلتي' },
+          { defaultTimeSec: c.defaultTimeSec, defaultPoints: c.defaultPoints }
+        ));
+        added += 1;
+      }
+      if (added) engine.emit('state');
+      return { added: added };
+    }));
     socket.on('admin:question:remove', guard((f) => {
       const c = engine.requireComp();
       const idx = c.questions.findIndex((q) => q.id === f.id);

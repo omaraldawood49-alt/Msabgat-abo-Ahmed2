@@ -84,7 +84,7 @@ function adminState(comp) {
     categories: comp.categories || [],
     questions: comp.questions.map((qq, i) => ({
       id: qq.id, index: i, text: qq.text, answer: qq.answer,
-      category: qq.category, timeLimitSec: qq.timeLimitSec, points: qq.points,
+      category: qq.category, difficulty: qq.difficulty || '', timeLimitSec: qq.timeLimitSec, points: qq.points,
     })),
     groups: Competition.groupsSummary(comp),
   });

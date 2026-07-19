@@ -98,6 +98,19 @@
 
   document.getElementById('btnAddQuestion').onclick = function () { openQEdit(null); };
 
+  // إضافة دفعة أسئلة
+  var bulkModal = document.getElementById('bulkModal');
+  document.getElementById('btnBulkAdd').onclick = function () { document.getElementById('bulkText').value = ''; bulkModal.classList.remove('hidden'); };
+  document.getElementById('bulkClose').onclick = function () { bulkModal.classList.add('hidden'); };
+  bulkModal.addEventListener('click', function (e) { if (e.target === bulkModal) bulkModal.classList.add('hidden'); });
+  document.getElementById('bulkSave').onclick = function () {
+    var text = document.getElementById('bulkText').value;
+    if (!text.trim()) { U.toast('اكتب الأسئلة أولًا', 'err'); return; }
+    send('admin:question:addBulk', { text: text }).then(function (r) {
+      if (r) { bulkModal.classList.add('hidden'); U.toast('أُضيف ' + (r.added || 0) + ' سؤالًا', 'ok'); }
+    });
+  };
+
   // نافذة تحرير سؤال
   var qEditModal = document.getElementById('qEditModal');
   var editingId = null;
@@ -266,6 +279,7 @@
         el('div', { class: 'qrow-answer' }, ['✅ الجواب: ' + q.answer]),
         el('div', { class: 'qrow-meta' }, [
           q.category ? el('span', { class: 'chip' }, [q.category]) : null,
+          q.difficulty ? el('span', { class: 'chip' }, [q.difficulty]) : null,
           el('span', { class: 'chip' }, ['⏱ ' + q.timeLimitSec + 'ث']),
           el('span', { class: 'chip' }, ['⭐ ' + fmt(q.points)])
         ])

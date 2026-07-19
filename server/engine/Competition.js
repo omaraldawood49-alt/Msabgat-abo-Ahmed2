@@ -39,6 +39,7 @@ function makeQuestion(fields = {}, defaults = {}) {
     text: String(fields.text || 'سؤال جديد').trim(),
     answer: String(fields.answer || '').trim(),
     category: String(fields.category || '').trim(),
+    difficulty: String(fields.difficulty || '').trim(),
     timeLimitSec: clampInt(fields.timeLimitSec, 5, 300, defaults.defaultTimeSec || 45),
     points: clampInt(fields.points, 0, 100000, defaults.defaultPoints || 1000),
   };
@@ -84,13 +85,18 @@ function createCompetition(opts = {}) {
     useSeed = true,
     questionCount = 10,
     categories = [],
+    difficulties = [],
   } = opts;
 
   const defaults = { defaultTimeSec, defaultPoints };
   const cats = Array.isArray(categories) ? categories.filter(Boolean) : [];
-  const pool = cats.length ? SEED_QUESTIONS.filter((q) => cats.indexOf(q.category) !== -1) : SEED_QUESTIONS;
+  const diffs = Array.isArray(difficulties) ? difficulties.filter(Boolean) : [];
+  let pool = SEED_QUESTIONS;
+  if (cats.length) pool = pool.filter((q) => cats.indexOf(q.category) !== -1);
+  if (diffs.length) pool = pool.filter((q) => diffs.indexOf(q.difficulty) !== -1);
+  if (!pool.length) pool = SEED_QUESTIONS;
   const questions = useSeed
-    ? sample(pool.length ? pool : SEED_QUESTIONS, clampInt(questionCount, 1, 50, 10)).map((q) => makeQuestion(q, defaults))
+    ? sample(pool, clampInt(questionCount, 1, 50, 10)).map((q) => makeQuestion(q, defaults))
     : [];
 
   const codes = new Set();
@@ -108,6 +114,7 @@ function createCompetition(opts = {}) {
     defaultPoints: clampInt(defaultPoints, 0, 100000, 1000),
     speedBonus: speedBonus !== false,
     categories: cats,
+    difficulties: diffs,
     questions,
     groups,
 

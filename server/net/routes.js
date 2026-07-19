@@ -34,6 +34,7 @@ function createRouter(roomManager, onRoomCreated) {
       const opts = {
         name: (b.name || 'لعبة الأفخاخ').toString().slice(0, 40),
         categories: Array.isArray(b.categories) ? b.categories : [],
+        difficulties: Array.isArray(b.difficulties) ? b.difficulties : [],
         questionCount: Number(b.questionCount) || 10,
         defaultTimeSec: Number(b.defaultTimeSec) || 45,
         defaultPoints: Number(b.defaultPoints) || 1000,

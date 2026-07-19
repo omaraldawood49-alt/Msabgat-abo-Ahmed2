@@ -48,6 +48,8 @@
       <div class="field"><label>اسم اللعبة</label><input id="cName" value="لعبة الأفخاخ" /></div>
       <label>اختر التصنيفات (فارغ = كل التصنيفات)</label>
       <div id="cCats" class="cats"></div>
+      <label style="margin-top:14px; display:block;">صعوبة الأسئلة (فارغ = مشكّل)</label>
+      <div id="cDiffs" class="cats"></div>
       <div class="row" style="margin-top:14px;">
         <div class="field"><label>عدد الأسئلة</label><input id="cCount" type="number" min="1" max="50" value="10" /></div>
         <div class="field"><label>مدة كل مرحلة (ثانية)</label><input id="cTime" type="number" min="10" max="300" value="45" /></div>
@@ -81,6 +83,18 @@
     'use strict';
     var el = U.el;
     var selected = new Set();
+    var selectedDiff = new Set();
+
+    // صعوبة الأسئلة
+    var diffWrap = document.getElementById('cDiffs');
+    [['سهل', '🟢'], ['متوسط', '🟡'], ['صعب', '🔴']].forEach(function (d) {
+      var chip = el('div', { class: 'cat-chip' }, [d[1] + ' ' + d[0]]);
+      chip.onclick = function () {
+        if (selectedDiff.has(d[0])) { selectedDiff.delete(d[0]); chip.classList.remove('on'); }
+        else { selectedDiff.add(d[0]); chip.classList.add('on'); }
+      };
+      diffWrap.appendChild(chip);
+    });
 
     // التبويبات
     var createPanel = document.getElementById('createPanel');
@@ -126,6 +140,7 @@
       var body = {
         name: document.getElementById('cName').value || 'لعبة الأفخاخ',
         categories: Array.from(selected),
+        difficulties: Array.from(selectedDiff),
         questionCount: parseInt(document.getElementById('cCount').value, 10) || 10,
         defaultTimeSec: parseInt(document.getElementById('cTime').value, 10) || 45,
         defaultPoints: parseInt(document.getElementById('cPoints').value, 10) || 1000,

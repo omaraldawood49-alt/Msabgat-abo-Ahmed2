@@ -219,6 +219,7 @@ class GameEngine extends EventEmitter {
     const fresh = Competition.createCompetition({
       name: old.name,
       categories: old.categories,
+      difficulties: old.difficulties,
       defaultTimeSec: old.defaultTimeSec,
       defaultPoints: old.defaultPoints,
       speedBonus: old.speedBonus,
@@ -253,8 +254,18 @@ class GameEngine extends EventEmitter {
     }
     comp.round.lies[groupId] = { text: clean, norm };
     this.emit('answer', { groupId });
-    this.emit('state');
+    // انتقال تلقائي إذا نصب الجميع فخهم
+    if (this._allAnswered()) this._toPick();
+    else this.emit('state');
     return { ok: true };
+  }
+
+  /** هل أجابت كل المجموعات في المرحلة الحالية؟ */
+  _allAnswered() {
+    const comp = this.comp;
+    if (!comp.groups.length) return false;
+    const map = comp.questionState === 'lies' ? comp.round.lies : comp.round.picks;
+    return comp.groups.every((g) => map[g.id] !== undefined);
   }
 
   /** اختيار إجابة في مرحلة pick. لا يمكن اختيار لغم المجموعة نفسها. */
@@ -274,7 +285,9 @@ class GameEngine extends EventEmitter {
     if (!comp.round.pickTimeLeft) comp.round.pickTimeLeft = {};
     comp.round.pickTimeLeft[groupId] = comp.timeLeft;
     this.emit('answer', { groupId });
-    this.emit('state');
+    // انتقال تلقائي للنتائج إذا اختار الجميع
+    if (this._allAnswered()) this._reveal();
+    else this.emit('state');
     return { ok: true };
   }
 
