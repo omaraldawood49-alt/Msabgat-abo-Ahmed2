@@ -71,7 +71,7 @@
   if (savedCode) connect(savedCode);
 
   var soundBtn = document.getElementById('soundBtn');
-  soundBtn.addEventListener('click', function () { var on = !Sound.isEnabled(); Sound.setEnabled(on); soundBtn.textContent = on ? '🔊' : '🔇'; });
+  soundBtn.addEventListener('click', function () { var on = !Sound.isEnabled(); Sound.setEnabled(on); soundBtn.textContent = on ? 'صوت' : 'صامت'; });
 
   function updateStatus(s) {
     var line = document.getElementById('statusLine');
@@ -81,8 +81,8 @@
     line.className = 'status-line ' + (live && !timeUp ? 'open' : '');
     if (s.status === 'finished') txt.textContent = 'انتهت اللعبة';
     else if (s.currentIndex < 0) txt.textContent = 'بانتظار البدء';
-    else if (timeUp) txt.textContent = 'انتهى الوقت ⏰';
-    else if (s.questionState === 'lies') txt.textContent = 'انصبوا الفخ! 🕳️';
+    else if (timeUp) txt.textContent = 'انتهى الوقت';
+    else if (s.questionState === 'lies') txt.textContent = 'انصبوا الفخ!';
     else if (s.questionState === 'pick') txt.textContent = 'اختاروا الإجابة';
     else if (s.questionState === 'revealed') txt.textContent = 'النتيجة';
     else txt.textContent = 'انتظروا...';
@@ -91,7 +91,7 @@
     var info = document.getElementById('qInfo');
     if (s.currentIndex >= 0 && s.question) {
       var live = s.questionState === 'lies' || s.questionState === 'pick';
-      info.textContent = 'سؤال ' + s.questionNumber + '/' + s.total + (live ? '  •  ⏱ ' + s.timeLeft + 'ث' : '');
+      info.textContent = 'سؤال ' + s.questionNumber + '/' + s.total + (live ? '  •  ' + s.timeLeft + 'ث' : '');
     } else info.textContent = '';
   }
 
@@ -110,12 +110,12 @@
     updateStatus(s); updateTimer(s);
 
     if (s.status === 'finished') return renderFinished(s);
-    if (s.currentIndex < 0 || !s.question) return renderWaiting(s, 'بانتظار بدء اللعبة', '⏳');
+    if (s.currentIndex < 0 || !s.question) return renderWaiting(s, 'بانتظار بدء اللعبة', '');
     var ph = s.questionState;
     if (ph === 'lies') return renderLies(s, prev);
     if (ph === 'pick') return renderPick(s);
     if (ph === 'revealed') return renderReveal(s);
-    return renderWaiting(s, 'انتظروا...', '⏳');
+    return renderWaiting(s, 'انتظروا...', '');
   }
 
   function renderWaiting(s, title, emoji) {
@@ -128,10 +128,9 @@
   }
   function renderFinished(s) {
     var rank = s.group.rank || '—';
-    var medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🎉';
     document.getElementById('content').innerHTML = '';
     document.getElementById('content').appendChild(el('div', { class: 'waitscreen' }, [
-      el('div', { class: 'emoji' }, [medal]), el('h2', {}, ['انتهت اللعبة!']),
+      el('div', { class: 'rankmedal' }, [String(rank)]), el('h2', {}, ['انتهت اللعبة!']),
       el('div', { class: 'rankpill' }, ['المركز #' + rank + '  •  ' + fmt(s.group.score) + ' نقطة'])
     ]));
   }
@@ -144,29 +143,29 @@
     if (isNew || !content.querySelector('.lie-box')) {
       content.innerHTML = '';
       content.appendChild(el('div', { class: 'panel qcard listen-card' }, [
-        el('div', { class: 'listen-emoji' }, ['🎤']),
+        el('div', { class: 'listen-emoji' }, ['']),
         el('div', { class: 'qtext' }, ['المقدّم يقرأ السؤال...']),
         q.category ? el('div', { class: 'qcat' }, ['التصنيف: ' + q.category]) : null
       ]));
       var input = el('input', { class: 'lie-input', maxlength: '60', placeholder: 'اكتب جوابًا خاطئًا مقنعًا', value: q.myLie || '' });
-      var btn = el('button', { class: 'btn btn-sell btn-block', style: 'margin-top:10px; font-size:17px; padding:14px;', text: '🕳️ انصب الفخ' });
+      var btn = el('button', { class: 'btn btn-sell btn-block', style: 'margin-top:10px; font-size:17px; padding:14px;', text: 'انصب الفخ' });
       btn.onclick = function () { submitLie(input.value); };
       input.addEventListener('keydown', function (e) { if (e.key === 'Enter') submitLie(input.value); });
       content.appendChild(el('div', { class: 'lie-box' }, [
-        el('div', { class: 'lie-hint' }, ['🎯 اكتب إجابة خاطئة تُوهم غيرك أنها صحيحة!']),
+        el('div', { class: 'lie-hint' }, ['اكتب إجابة خاطئة تُوهم غيرك أنها صحيحة!']),
         input, btn, el('div', { class: 'lie-status', id: 'lieStatus' }, [])
       ]));
     }
     var st = document.getElementById('lieStatus');
     if (st) st.innerHTML = q.myLie ? '' : '';
-    if (st && q.myLie) { st.appendChild(el('div', { class: 'banner banner-wait' }, ['✔ فخك: «' + q.myLie + '» — يمكنك تعديله'])); }
+    if (st && q.myLie) { st.appendChild(el('div', { class: 'banner banner-wait' }, ['فخك: «' + q.myLie + '» — يمكنك تعديله'])); }
   }
   function submitLie(text) {
     if (!socket) return;
     var t = (text || '').trim();
     if (!t) { U.toast('اكتب جوابًا', 'err'); return; }
     socket.emit('player:lie', { text: t }, function (res) {
-      if (res && res.ok) { Sound.lockIn(); U.toast('نُصب الفخ 🕳️', 'ok'); }
+      if (res && res.ok) { Sound.lockIn(); U.toast('نُصب الفخ', 'ok'); }
       else { Sound.error(); U.toast((res && res.error) || 'تعذّر الإرسال', 'err'); }
     });
   }
@@ -202,12 +201,12 @@
     });
     var slot = content.querySelector('.fbslot');
     slot.innerHTML = '';
-    if (picked) slot.appendChild(el('div', { class: 'banner banner-wait' }, ['✔ تم اختياركم — بانتظار البقية']));
+    if (picked) slot.appendChild(el('div', { class: 'banner banner-wait' }, ['تم اختياركم — بانتظار البقية']));
   }
   function submitPick(optionId) {
     if (!socket) return;
     socket.emit('player:pick', { optionId: optionId }, function (res) {
-      if (res && res.ok) { Sound.lockIn(); U.toast('تم الاختيار ✅', 'ok'); }
+      if (res && res.ok) { Sound.lockIn(); U.toast('تم الاختيار', 'ok'); }
       else { Sound.error(); U.toast((res && res.error) || 'تعذّر الاختيار', 'err'); }
     });
   }
@@ -224,20 +223,20 @@
     var opts = el('div', { class: 'opts cols1' });
     q.options.forEach(function (o, i) {
       var cls = 'opt-btn opt-' + (i % COLORS) + (o.truth ? ' correct' : ' dimmed');
-      var label = o.text; if (o.truth) label += '  ✅'; if (o.mine) label += '  (فخك)';
+      var label = o.text; if (o.truth) label += ' '; if (o.mine) label += '  (فخك)';
       opts.appendChild(el('button', { class: cls + (o.picked ? ' chosen' : ''), disabled: true }, [el('span', { class: 'otext' }, [label])]));
     });
     content.appendChild(opts);
 
     var fb;
-    if (q.myPickCorrect === true) fb = el('div', { class: 'feedback ok' }, [el('span', { class: 'big' }, ['✅ أصبت الصحيح!']), el('span', { class: 'pts' }, ['+' + fmt(q.awarded) + ' نقطة'])]);
-    else if (q.myPickCorrect === false) fb = el('div', { class: 'feedback no' }, [el('span', { class: 'big' }, ['💥 وقعت في فخ ' + (q.myTrapOwners && q.myTrapOwners.length ? q.myTrapOwners.join('، ') : '')])]);
+    if (q.myPickCorrect === true) fb = el('div', { class: 'feedback ok' }, [el('span', { class: 'big' }, ['أصبت الصحيح!']), el('span', { class: 'pts' }, ['+' + fmt(q.awarded) + ' نقطة'])]);
+    else if (q.myPickCorrect === false) fb = el('div', { class: 'feedback no' }, [el('span', { class: 'big' }, ['وقعت في فخ ' + (q.myTrapOwners && q.myTrapOwners.length ? q.myTrapOwners.join('، ') : '')])]);
     else fb = el('div', { class: 'feedback no' }, [el('span', { class: 'big' }, ['— لم تختاروا'])]);
     content.appendChild(fb);
 
     if (q.myTrapTakers && q.myTrapTakers.length) {
       content.appendChild(el('div', { class: 'feedback ok', style: 'margin-top:10px;' }, [
-        el('span', { class: 'big' }, ['🕳️ فخك أوقع ' + q.myTrapTakers.length + '!']),
+        el('span', { class: 'big' }, ['فخك أوقع ' + q.myTrapTakers.length + '!']),
         el('span', { class: 'pts' }, [q.myTrapTakers.join('، ')])
       ]));
     }

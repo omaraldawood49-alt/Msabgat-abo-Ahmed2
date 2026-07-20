@@ -43,8 +43,8 @@
     ms.className = 'market-status ' + (live && !timeUp ? 'open' : s.status === 'finished' ? 'closed' : '');
     st.textContent = s.status === 'finished' ? 'انتهت اللعبة'
       : s.currentIndex < 0 ? 'بانتظار البدء'
-      : timeUp ? 'انتهى الوقت ⏰'
-      : s.questionState === 'lies' ? 'انصبوا الفخ 🕳️'
+      : timeUp ? 'انتهى الوقت'
+      : s.questionState === 'lies' ? 'انصبوا الفخ'
       : s.questionState === 'pick' ? 'اختاروا الإجابة'
       : s.questionState === 'revealed' ? 'الإجابة الصحيحة' : 'متوقّف';
 
@@ -103,8 +103,8 @@
     var rb = document.getElementById('revealBoard');
 
     if (ph === 'lies') {
-      qText.textContent = '🎤 المضيف يقرأ السؤال...';
-      answeredEl.textContent = '🕳️ نصب فخه ' + q.answered + ' من ' + q.total;
+      qText.textContent = 'المضيف يقرأ السؤال...';
+      answeredEl.textContent = 'نصب فخه ' + q.answered + ' من ' + q.total;
       grid.className = 'opt-grid cols1'; grid.innerHTML = '';
       grid.appendChild(el('div', { class: 'lies-prompt' }, ['اكتبوا إجابة خاطئة مقنعة من جوالاتكم — لتوقعوا غيركم!']));
       rb.classList.add('hidden');
@@ -112,13 +112,13 @@
     }
     if (ph === 'pick') {
       qText.textContent = 'اختاروا الإجابة الصحيحة';
-      answeredEl.textContent = '✋ اختار ' + q.answered + ' من ' + q.total;
+      answeredEl.textContent = 'اختار ' + q.answered + ' من ' + q.total;
       renderOptions(grid, q.options, false);
       rb.classList.add('hidden');
       return;
     }
     // revealed
-    qText.textContent = '✅ الإجابة الصحيحة: ' + q.answer;
+    qText.textContent = 'الإجابة الصحيحة: ' + q.answer;
     answeredEl.textContent = '';
     renderOptions(grid, q.options, true);
     renderRevealBoard(s.leaderboard || []);
@@ -132,8 +132,8 @@
       var kids = [el('span', { class: 'otext' }, [o.text])];
       var cls = 'opt-tile mine-tile opt-' + (i % COLORS);
       if (revealed) {
-        if (o.truth) { cls += ' correct'; kids.push(el('span', { class: 'tag-correct' }, ['✅ الصحيح'])); }
-        else { cls += ' dimmed'; if (o.owners && o.owners.length) kids.push(el('span', { class: 'tag-owner' }, ['🕳️ ' + o.owners.join('، ')])); }
+        if (o.truth) { cls += ' correct'; kids.push(el('span', { class: 'tag-correct' }, ['الصحيح'])); }
+        else { cls += ' dimmed'; if (o.owners && o.owners.length) kids.push(el('span', { class: 'tag-owner' }, ['' + o.owners.join('، ')])); }
         kids.push(el('span', { class: 'tally' }, [String(o.pickCount || 0)]));
       }
       grid.appendChild(el('div', { class: cls }, kids));
@@ -170,10 +170,9 @@
     var top3 = standings.slice(0, 3); var order = [top3[1], top3[0], top3[2]];
     order.forEach(function (g) {
       if (!g) return;
-      var medal = g.rank === 1 ? '🥇' : g.rank === 2 ? '🥈' : '🥉';
       var pcls = g.rank === 1 ? 'p1' : g.rank === 2 ? 'p2' : 'p3';
       podium.appendChild(el('div', { class: 'pod ' + pcls }, [
-        el('div', { class: 'medal' }, [medal]), el('div', { class: 'pname' }, [g.name]),
+        el('div', { class: 'medal' }, [String(g.rank)]), el('div', { class: 'pname' }, [g.name]),
         el('div', { class: 'pwealth mono' }, [fmt(g.score) + ' نقطة']), el('div', { class: 'muted' }, ['المركز ' + g.rank])
       ]));
     });

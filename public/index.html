@@ -1,94 +1,97 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>لعبة الأفخاخ</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%B3%EF%B8%8F%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="/shared/theme.css" />
-  <style>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+ <title>لعبة الأفخاخ</title>
+ <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cellipse cx='20' cy='24' rx='16' ry='9' fill='%2338220f' stroke='%23d9a404' stroke-width='2.5'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/shared/fonts.css" />
+ <link rel="stylesheet" href="/shared/theme.css" />
+ <style>
     .hub { max-width: 720px; margin: 0 auto; padding: 34px 16px 60px; }
-    .hero { text-align: center; margin-bottom: 24px; }
-    .hero h1 { font-size: 34px; }
-    .hero .dot { display: inline-block; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px var(--accent); margin-inline-start: 6px; }
-    .hero p { color: var(--text-dim); }
+    .hero { text-align: center; margin-bottom: 22px; }
+    .hero h1 { font-size: 34px; display: inline-flex; align-items: center; gap: 12px; }
     .choice { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
-    .choice .btn { padding: 20px; font-size: 18px; flex-direction: column; gap: 6px; }
-    .choice .btn .ico { font-size: 30px; }
-    .panel-pad { padding: 20px; }
+    .choice .btn { padding: 20px; font-size: 18px; }
     .resume { text-align: center; margin-bottom: 16px; }
     .cats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
-    .cat-chip { border: 1px solid var(--border); background: var(--panel-2); border-radius: 999px; padding: 8px 14px; cursor: pointer; font-weight: 700; font-size: 14px; user-select: none; transition: all .12s; }
-    .cat-chip.on { background: linear-gradient(180deg,#8b7bff,var(--accent-2)); color: #fff; border-color: transparent; }
-    .cat-chip .c { opacity: .6; font-size: 12px; }
+    .cat-chip { border: 2px solid var(--border); background: var(--panel-2); border-radius: 999px; padding: 8px 14px; cursor: pointer; font-weight: 700; font-size: 14px; user-select: none; display: inline-flex; align-items: center; gap: 6px; }
+    .cat-chip.on { background: linear-gradient(180deg, var(--c-gold), var(--c-red)); color: #fff2d6; border-color: var(--border); }
+    .cat-chip .c { opacity: .6; font-size: 12px; font-family: var(--mono); }
+    .swatch { width: 12px; height: 12px; border-radius: 3px; border: 2px solid var(--border); display: inline-block; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .hidden { display: none !important; }
-    .code-input { text-align: center; letter-spacing: 6px; font-size: 24px; font-weight: 800; text-transform: uppercase; }
+    .code-input { text-align: center; letter-spacing: 6px; font-size: 24px; font-weight: 800; text-transform: uppercase; font-family: var(--mono); }
     .sub { color: var(--text-dim); font-size: 13px; margin: 2px 0 10px; }
-  </style>
+ </style>
 </head>
 <body>
-  <div class="hub">
-    <div class="hero">
-      <h1>🕳️ لعبة الأفخاخ <span class="dot"></span></h1>
-      <p>انصب فخًّا للجميع، وأصِب الجواب الصحيح، وأوقِع خصومك! — غرف مستقلة لكل لعبة</p>
-    </div>
+ <div class="hub">
+ <div class="hero">
+ <h1>
+ <span class="hole-logo"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="25" rx="16" ry="9" fill="#38220f" stroke="#d9a404" stroke-width="2.5"/><ellipse cx="20" cy="22" rx="11" ry="5.5" fill="#1a0f06"/></svg></span>
+ <span class="title-grad">لعبة الأفخاخ</span>
+ </h1>
+ <div class="sunset" style="max-width:320px; margin:12px auto 10px;"><i></i><i></i><i></i><i></i></div>
+ <p class="muted">انصب فخًّا للجميع، وأصِب الجواب الصحيح، وأوقِع خصومك — غرف مستقلة لكل لعبة</p>
+ </div>
 
-    <div id="resume" class="resume hidden">
-      <button id="btnResume" class="btn btn-accent">🔁 استئناف لعبتك: <b id="resumeCode"></b></button>
-    </div>
+ <div id="resume" class="resume hidden">
+ <button id="btnResume" class="btn btn-accent">استئناف لعبتك: <b id="resumeCode"></b></button>
+ </div>
 
-    <div class="choice">
-      <button id="tabCreate" class="btn btn-primary"><span class="ico">🎮</span> إنشاء لعبة</button>
-      <button id="tabJoin" class="btn"><span class="ico">🙌</span> انضمام للعبة</button>
-    </div>
+ <div class="choice">
+ <button id="tabCreate" class="btn btn-primary">إنشاء لعبة</button>
+ <button id="tabJoin" class="btn">انضمام للعبة</button>
+ </div>
 
-    <!-- إنشاء -->
-    <div id="createPanel" class="panel panel-pad">
-      <div class="field"><label>اسم اللعبة</label><input id="cName" value="لعبة الأفخاخ" /></div>
-      <label>اختر التصنيفات (فارغ = كل التصنيفات)</label>
-      <div id="cCats" class="cats"></div>
-      <label style="margin-top:14px; display:block;">صعوبة الأسئلة (فارغ = مشكّل)</label>
-      <div id="cDiffs" class="cats"></div>
-      <div class="row" style="margin-top:14px;">
-        <div class="field"><label>عدد الأسئلة</label><input id="cCount" type="number" min="1" max="50" value="10" /></div>
-        <div class="field"><label>مدة كل مرحلة (ثانية)</label><input id="cTime" type="number" min="10" max="300" value="45" /></div>
-      </div>
-      <div class="row">
-        <div class="field"><label>نقاط السؤال</label><input id="cPoints" type="number" min="0" value="1000" /></div>
-        <div class="field"><label>مكافأة السرعة</label>
-          <select id="cSpeed"><option value="1">مفعّلة</option><option value="0">معطّلة</option></select>
-        </div>
-      </div>
-      <button id="btnCreate" class="btn btn-accent btn-block" style="font-size:18px; padding:14px;">🚀 إنشاء وبدء الاستضافة</button>
-      <p id="createErr" class="down center" style="min-height:18px;"></p>
-    </div>
+ <!-- إنشاء -->
+ <div id="createPanel" class="panel panel-pad">
+ <div class="field"><label>اسم اللعبة</label><input id="cName" value="لعبة الأفخاخ" /></div>
+ <label>اختر التصنيفات (فارغ = كل التصنيفات)</label>
+ <div id="cCats" class="cats"></div>
+ <label style="margin-top:14px; display:block;">صعوبة الأسئلة (فارغ = مشكّل)</label>
+ <div id="cDiffs" class="cats"></div>
+ <div class="row" style="margin-top:14px;">
+ <div class="field"><label>عدد الأسئلة</label><input id="cCount" type="number" min="1" max="50" value="10" /></div>
+ <div class="field"><label>مدة كل مرحلة (ثانية)</label><input id="cTime" type="number" min="10" max="300" value="45" /></div>
+ </div>
+ <div class="row">
+ <div class="field"><label>نقاط السؤال</label><input id="cPoints" type="number" min="0" value="1000" /></div>
+ <div class="field"><label>مكافأة السرعة</label>
+ <select id="cSpeed"><option value="1">مفعّلة</option><option value="0">معطّلة</option></select>
+ </div>
+ </div>
+ <button id="btnCreate" class="btn btn-accent btn-block" style="font-size:18px; padding:14px;">إنشاء وبدء الاستضافة</button>
+ <p id="createErr" class="down center" style="min-height:18px;"></p>
+ </div>
 
-    <!-- انضمام -->
-    <div id="joinPanel" class="panel panel-pad hidden">
-      <div class="field">
-        <label>رمز اللعبة</label>
-        <p class="sub">اطلبه من مضيف اللعبة</p>
-        <input id="jCode" class="code-input" maxlength="4" placeholder="• • • •" autocomplete="off" />
-      </div>
-      <button id="btnJoin" class="btn btn-accent btn-block" style="font-size:18px; padding:14px;">دخول</button>
-      <p id="joinErr" class="down center" style="min-height:18px;"></p>
-    </div>
-  </div>
+ <!-- انضمام -->
+ <div id="joinPanel" class="panel panel-pad hidden">
+ <div class="field">
+ <label>رمز اللعبة</label>
+ <p class="sub">اطلبه من مضيف اللعبة</p>
+ <input id="jCode" class="code-input" maxlength="4" placeholder="----" autocomplete="off" />
+ </div>
+ <button id="btnJoin" class="btn btn-accent btn-block" style="font-size:18px; padding:14px;">دخول</button>
+ <p id="joinErr" class="down center" style="min-height:18px;"></p>
+ </div>
+ </div>
 
-  <div id="toast"></div>
-  <script src="/shared/util.js"></script>
-  <script>
+ <div id="toast"></div>
+ <script src="/shared/util.js"></script>
+ <script>
   (function () {
     'use strict';
     var el = U.el;
     var selected = new Set();
     var selectedDiff = new Set();
 
-    // صعوبة الأسئلة
+    // صعوبة الأسئلة (بمربّعات لونية هندسية بلا إيموجي)
     var diffWrap = document.getElementById('cDiffs');
-    [['سهل', '🟢'], ['متوسط', '🟡'], ['صعب', '🔴']].forEach(function (d) {
-      var chip = el('div', { class: 'cat-chip' }, [d[1] + ' ' + d[0]]);
+    [['سهل', 'var(--c-green)'], ['متوسط', 'var(--c-gold)'], ['صعب', 'var(--c-red)']].forEach(function (d) {
+      var chip = el('div', { class: 'cat-chip' }, [
+        el('span', { class: 'swatch', style: 'background:' + d[1] }), d[0]
+      ]);
       chip.onclick = function () {
         if (selectedDiff.has(d[0])) { selectedDiff.delete(d[0]); chip.classList.remove('on'); }
         else { selectedDiff.add(d[0]); chip.classList.add('on'); }
@@ -96,7 +99,6 @@
       diffWrap.appendChild(chip);
     });
 
-    // التبويبات
     var createPanel = document.getElementById('createPanel');
     var joinPanel = document.getElementById('joinPanel');
     var tabCreate = document.getElementById('tabCreate');
@@ -110,7 +112,6 @@
     tabCreate.onclick = function () { setTab(true); };
     tabJoin.onclick = function () { setTab(false); };
 
-    // استئناف لعبة مستضافة سابقًا
     try {
       var last = localStorage.getItem('lastHostRoom');
       if (last && localStorage.getItem('host_' + last)) {
@@ -120,7 +121,6 @@
       }
     } catch (e) {}
 
-    // التصنيفات
     fetch('/api/categories').then(function (r) { return r.json(); }).then(function (d) {
       var wrap = document.getElementById('cCats');
       (d.categories || []).forEach(function (c) {
@@ -133,7 +133,6 @@
       });
     }).catch(function () {});
 
-    // إنشاء لعبة
     document.getElementById('btnCreate').onclick = function () {
       var btn = this; btn.disabled = true;
       document.getElementById('createErr').textContent = '';
@@ -158,7 +157,6 @@
         }).catch(function () { document.getElementById('createErr').textContent = 'تعذّر الاتصال'; btn.disabled = false; });
     };
 
-    // انضمام
     function doJoin() {
       var code = (document.getElementById('jCode').value || '').trim().toUpperCase();
       if (code.length < 3) { document.getElementById('joinErr').textContent = 'أدخل رمز اللعبة'; return; }
@@ -171,10 +169,9 @@
     document.getElementById('btnJoin').onclick = doJoin;
     document.getElementById('jCode').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
 
-    // رمز من الرابط (لو دخل عبر ?room=)
     var urlRoom = U.qs('room');
     if (urlRoom) { setTab(false); document.getElementById('jCode').value = urlRoom.toUpperCase(); }
   })();
-  </script>
+ </script>
 </body>
 </html>

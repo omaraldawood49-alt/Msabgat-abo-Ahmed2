@@ -1,82 +1,83 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>شاشة العرض — لعبة الأفخاخ</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%B3%EF%B8%8F%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="/shared/theme.css" />
-  <link rel="stylesheet" href="/display/display.css" />
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+ <title>شاشة العرض — لعبة الأفخاخ</title>
+ <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cellipse cx='20' cy='24' rx='16' ry='9' fill='%2338220f' stroke='%23d9a404' stroke-width='2.5'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/shared/fonts.css" />
+ <link rel="stylesheet" href="/shared/theme.css" />
+ <link rel="stylesheet" href="/display/display.css" />
 </head>
 <body>
-  <!-- طبقة البدء (لتفعيل الصوت) -->
-  <div id="startOverlay" class="overlay">
-    <div class="overlay-inner">
-      <div class="brand" style="font-size:30px; justify-content:center;"><span class="dot"></span> لعبة الأفخاخ</div>
-      <p class="muted">شاشة العرض المشتركة</p>
-      <button id="startBtn" class="btn btn-accent" style="font-size:18px; padding:14px 34px; margin-top:14px;">▶ بدء العرض</button>
-    </div>
-  </div>
+ <!-- طبقة البدء (لتفعيل الصوت) -->
+ <div id="startOverlay" class="overlay">
+ <div class="overlay-inner">
+ <div class="brand" style="font-size:30px; justify-content:center;"><span class="dot"></span> لعبة الأفخاخ</div>
+ <p class="muted">شاشة العرض المشتركة</p>
+ <button id="startBtn" class="btn btn-accent" style="font-size:18px; padding:14px 34px; margin-top:14px;">بدء العرض</button>
+ </div>
+ </div>
 
-  <!-- الرأس -->
-  <header class="dhead">
-    <div class="dhead-title">
-      <div class="brand"><span class="dot"></span> <span id="compName">لعبة الأفخاخ</span></div>
-      <div class="market-status" id="marketStatus"><span class="live-dot"></span><span id="statusText">بانتظار البدء</span></div>
-    </div>
-    <div class="dhead-round">
-      <div class="round-box">
-        <div class="round-num">السؤال <span id="qNum">—</span><span class="round-total" id="qTotal"></span></div>
-      </div>
-      <div class="countdown">
-        <svg viewBox="0 0 120 120" class="ring">
-          <circle class="ring-bg" cx="60" cy="60" r="52" />
-          <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="52" />
-        </svg>
-        <div class="ring-time mono" id="ringTime">0</div>
-      </div>
-    </div>
-  </header>
+ <!-- الرأس -->
+ <header class="dhead">
+ <div class="dhead-title">
+ <div class="brand"><span class="dot"></span> <span id="compName">لعبة الأفخاخ</span></div>
+ <div class="market-status" id="marketStatus"><span class="live-dot"></span><span id="statusText">بانتظار البدء</span></div>
+ </div>
+ <div class="dhead-round">
+ <div class="round-box">
+ <div class="round-num">السؤال <span id="qNum">—</span><span class="round-total" id="qTotal"></span></div>
+ </div>
+ <div class="countdown">
+ <svg viewBox="0 0 120 120" class="ring">
+ <circle class="ring-bg" cx="60" cy="60" r="52" />
+ <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="52" />
+ </svg>
+ <div class="ring-time mono" id="ringTime">0</div>
+ </div>
+ </div>
+ </header>
 
-  <main class="dmain">
-    <!-- الردهة: بانتظار البدء -->
-    <section id="lobby" class="lobby hidden">
-      <div class="lobby-card panel">
-        <h1 id="lobbyTitle">امسح الرمز وانضم!</h1>
-        <p class="muted">صوّر رمز QR بكاميرا جوالك، اكتب اسم مجموعتك، وادخل</p>
-        <div class="lobby-room">رمز الغرفة: <b id="lobbyRoom">—</b></div>
-        <img id="joinQr" class="lobby-qr" alt="QR للانضمام" />
-        <div class="lobby-join">أو افتح <b id="joinUrl">/player</b></div>
-        <div class="lobby-count"><span id="lobbyCount">0</span> مجموعة منضمّة</div>
-        <div id="lobbyGroups" class="lobby-groups"></div>
-      </div>
-    </section>
+ <main class="dmain">
+ <!-- الردهة: بانتظار البدء -->
+ <section id="lobby" class="lobby hidden">
+ <div class="lobby-card panel">
+ <h1 id="lobbyTitle">امسح الرمز وانضم!</h1>
+ <p class="muted">صوّر رمز QR بكاميرا جوالك، اكتب اسم مجموعتك، وادخل</p>
+ <div class="lobby-room">رمز الغرفة: <b id="lobbyRoom">—</b></div>
+ <img id="joinQr" class="lobby-qr" alt="QR للانضمام" />
+ <div class="lobby-join">أو افتح <b id="joinUrl">/player</b></div>
+ <div class="lobby-count"><span id="lobbyCount">0</span> مجموعة منضمّة</div>
+ <div id="lobbyGroups" class="lobby-groups"></div>
+ </div>
+ </section>
 
-    <!-- منصة السؤال -->
-    <section id="stage" class="stage hidden">
-      <div class="q-top">
-        <span id="qCategory" class="q-cat"></span>
-        <span id="qPoints" class="q-points"></span>
-      </div>
-      <div id="qText" class="q-text"></div>
-      <div class="q-answered" id="qAnswered"></div>
-      <div id="optGrid" class="opt-grid"></div>
-      <div id="revealBoard" class="reveal-board hidden"></div>
-    </section>
-  </main>
+ <!-- منصة السؤال -->
+ <section id="stage" class="stage hidden">
+ <div class="q-top">
+ <span id="qCategory" class="q-cat"></span>
+ <span id="qPoints" class="q-points"></span>
+ </div>
+ <div id="qText" class="q-text"></div>
+ <div class="q-answered" id="qAnswered"></div>
+ <div id="optGrid" class="opt-grid"></div>
+ <div id="revealBoard" class="reveal-board hidden"></div>
+ </section>
+ </main>
 
-  <!-- طبقة التتويج النهائية -->
-  <div id="podiumOverlay" class="overlay hidden">
-    <div class="podium-wrap">
-      <h1 class="podium-title">🏆 النتائج النهائية</h1>
-      <div id="podium" class="podium"></div>
-      <div id="podiumRest" class="podium-rest"></div>
-    </div>
-  </div>
+ <!-- طبقة التتويج النهائية -->
+ <div id="podiumOverlay" class="overlay hidden">
+ <div class="podium-wrap">
+ <h1 class="podium-title">النتائج النهائية</h1>
+ <div id="podium" class="podium"></div>
+ <div id="podiumRest" class="podium-rest"></div>
+ </div>
+ </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/shared/sound.js"></script>
-  <script src="/shared/util.js"></script>
-  <script src="/display/display.js"></script>
+ <script src="/socket.io/socket.io.js"></script>
+ <script src="/shared/sound.js"></script>
+ <script src="/shared/util.js"></script>
+ <script src="/display/display.js"></script>
 </body>
 </html>

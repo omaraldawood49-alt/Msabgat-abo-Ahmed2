@@ -1,170 +1,171 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>المضيف — لعبة الأفخاخ</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%B3%EF%B8%8F%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="/shared/theme.css" />
-  <link rel="stylesheet" href="/admin/admin.css" />
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+ <title>المضيف — لعبة الأفخاخ</title>
+ <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cellipse cx='20' cy='24' rx='16' ry='9' fill='%2338220f' stroke='%23d9a404' stroke-width='2.5'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/shared/fonts.css" />
+ <link rel="stylesheet" href="/shared/theme.css" />
+ <link rel="stylesheet" href="/admin/admin.css" />
 </head>
 <body>
-  <!-- شاشة خطأ (لست المضيف / لا توجد غرفة) -->
-  <div id="errScreen" class="login-wrap hidden">
-    <div class="panel login-box center">
-      <div class="brand center" style="justify-content:center;"><span class="dot"></span> لعبة الأفخاخ</div>
-      <p id="errMsg" class="muted" style="margin:14px 0;">—</p>
-      <a href="/" class="btn btn-accent btn-block">الصفحة الرئيسية</a>
-    </div>
-  </div>
+ <!-- شاشة خطأ (لست المضيف / لا توجد غرفة) -->
+ <div id="errScreen" class="login-wrap hidden">
+ <div class="panel login-box center">
+ <div class="brand center" style="justify-content:center;"><span class="dot"></span> لعبة الأفخاخ</div>
+ <p id="errMsg" class="muted" style="margin:14px 0;">—</p>
+ <a href="/" class="btn btn-accent btn-block">الصفحة الرئيسية</a>
+ </div>
+ </div>
 
-  <!-- اللوحة -->
-  <div id="dashboard" class="hidden">
-    <div class="control-bar">
-      <div class="cb-status">
-        <span class="room-chip">الغرفة <b id="roomCode">—</b></span>
-        <span class="badge" id="statusBadge">—</span>
-        <span class="cb-round">السؤال <b id="cbNum">0</b><span id="cbTotal"></span></span>
-        <span class="cb-timer mono" id="cbTimer"></span>
-      </div>
-      <div class="cb-actions">
-        <button id="btnStart" class="btn btn-buy">▶ ابدأ اللعبة</button>
-        <button id="btnToPick" class="btn btn-accent">📋 اعرض الخيارات</button>
-        <button id="btnReveal" class="btn btn-accent">👁 اكشف الإجابة</button>
-        <button id="btnNext" class="btn btn-primary">⏩ التالي</button>
-        <button id="btnFinish" class="btn btn-sm">🏁 إنهاء</button>
-      </div>
-    </div>
+ <!-- اللوحة -->
+ <div id="dashboard" class="hidden">
+ <div class="control-bar">
+ <div class="cb-status">
+ <span class="room-chip">الغرفة <b id="roomCode">—</b></span>
+ <span class="badge" id="statusBadge">—</span>
+ <span class="cb-round">السؤال <b id="cbNum">0</b><span id="cbTotal"></span></span>
+ <span class="cb-timer mono" id="cbTimer"></span>
+ </div>
+ <div class="cb-actions">
+ <button id="btnStart" class="btn btn-buy">ابدأ اللعبة</button>
+ <button id="btnToPick" class="btn btn-accent">اعرض الخيارات</button>
+ <button id="btnReveal" class="btn btn-accent">اكشف الإجابة</button>
+ <button id="btnNext" class="btn btn-primary">التالي</button>
+ <button id="btnFinish" class="btn btn-sm">إنهاء</button>
+ </div>
+ </div>
 
-    <div class="tabs">
-      <button class="tab active" data-tab="live">🎬 اللعب</button>
-      <button class="tab" data-tab="questions">❓ الأسئلة</button>
-      <button class="tab" data-tab="setup">⚙️ الإعداد</button>
-    </div>
+ <div class="tabs">
+ <button class="tab active" data-tab="live">اللعب</button>
+ <button class="tab" data-tab="questions">الأسئلة</button>
+ <button class="tab" data-tab="setup">الإعداد</button>
+ </div>
 
-    <div class="tab-body">
-      <!-- اللعب -->
-      <section id="tab-live" class="tab-pane active">
-        <div id="joinPanel" class="panel panel-pad join-panel hidden">
-          <div class="join-left">
-            <h2>👋 انضمّوا الآن</h2>
-            <p class="muted">صوّروا الرمز أو ادخلوا الرابط، اكتبوا اسم مجموعتكم، وادخلوا.</p>
-            <div class="room-big">رمز الغرفة: <b id="roomBig">—</b></div>
-            <div class="join-url-box">الرابط: <b id="joinUrl">/player</b></div>
-            <div class="join-count"><span id="joinCount">0</span> مجموعة منضمّة</div>
-            <div id="joinGroups" class="join-groups"></div>
-            <p class="muted" style="margin-top:12px;">جاهز؟ اضغط <b>«ابدأ اللعبة»</b> بالأعلى.</p>
-          </div>
-          <div class="join-right">
-            <img id="joinQr" class="join-qr" alt="QR للانضمام" />
-          </div>
-        </div>
+ <div class="tab-body">
+ <!-- اللعب -->
+ <section id="tab-live" class="tab-pane active">
+ <div id="joinPanel" class="panel panel-pad join-panel hidden">
+ <div class="join-left">
+ <h2>انضمّوا الآن</h2>
+ <p class="muted">صوّروا الرمز أو ادخلوا الرابط، اكتبوا اسم مجموعتكم، وادخلوا.</p>
+ <div class="room-big">رمز الغرفة: <b id="roomBig">—</b></div>
+ <div class="join-url-box">الرابط: <b id="joinUrl">/player</b></div>
+ <div class="join-count"><span id="joinCount">0</span> مجموعة منضمّة</div>
+ <div id="joinGroups" class="join-groups"></div>
+ <p class="muted" style="margin-top:12px;">جاهز؟ اضغط <b>«ابدأ اللعبة»</b> بالأعلى.</p>
+ </div>
+ <div class="join-right">
+ <img id="joinQr" class="join-qr" alt="QR للانضمام" />
+ </div>
+ </div>
 
-        <div id="liveCard" class="panel panel-pad hidden">
-          <div class="live-head">
-            <span class="q-cat" id="liveCat"></span>
-            <span class="muted" id="liveAnswered"></span>
-          </div>
-          <div class="host-only-tag">👁️ هذا السؤال يظهر لك فقط — اقرأه بصوتٍ للمشاركين</div>
-          <h2 id="liveText" class="live-q">—</h2>
-          <div id="liveAnswerBox" class="live-answer"></div>
-          <div id="liveLies" class="live-lies"></div>
-          <div id="liveOpts" class="live-opts"></div>
-          <div id="liveTrapMap" class="trap-map"></div>
-          <p class="muted" id="liveHint" style="margin-top:14px;"></p>
-        </div>
+ <div id="liveCard" class="panel panel-pad hidden">
+ <div class="live-head">
+ <span class="q-cat" id="liveCat"></span>
+ <span class="muted" id="liveAnswered"></span>
+ </div>
+ <div class="host-only-tag">هذا السؤال يظهر لك فقط — اقرأه بصوتٍ للمشاركين</div>
+ <h2 id="liveText" class="live-q">—</h2>
+ <div id="liveAnswerBox" class="live-answer"></div>
+ <div id="liveLies" class="live-lies"></div>
+ <div id="liveOpts" class="live-opts"></div>
+ <div id="liveTrapMap" class="trap-map"></div>
+ <p class="muted" id="liveHint" style="margin-top:14px;"></p>
+ </div>
 
-        <div id="liveEmpty" class="panel panel-pad hidden"><p class="muted">—</p></div>
+ <div id="liveEmpty" class="panel panel-pad hidden"><p class="muted">—</p></div>
 
-        <div class="panel panel-pad" id="boardPanel" style="margin-top:14px;">
-          <h3>🏆 الترتيب المباشر <span class="muted" id="groupCount"></span></h3>
-          <div id="liveBoard" class="live-board"></div>
-        </div>
-      </section>
+ <div class="panel panel-pad" id="boardPanel" style="margin-top:14px;">
+ <h3>الترتيب المباشر <span class="muted" id="groupCount"></span></h3>
+ <div id="liveBoard" class="live-board"></div>
+ </div>
+ </section>
 
-      <!-- الأسئلة -->
-      <section id="tab-questions" class="tab-pane">
-        <div class="panel panel-pad">
-          <div class="pane-head">
-            <h3>الأسئلة <span class="muted" id="qCount"></span></h3>
-            <div style="display:flex; gap:6px;">
-              <button id="btnBulkAdd" class="btn btn-sm btn-accent">📋 إضافة دفعة</button>
-              <button id="btnAddQuestion" class="btn btn-sm btn-primary">➕ إضافة سؤال</button>
-            </div>
-          </div>
-          <p class="muted" style="margin-top:0;">الأسئلة اختيرت عشوائيًا من التصنيفات التي حددتها. يمكنك تعديلها أو إضافة أسئلتك.</p>
-          <div id="questionList" class="question-list"></div>
-        </div>
-      </section>
+ <!-- الأسئلة -->
+ <section id="tab-questions" class="tab-pane">
+ <div class="panel panel-pad">
+ <div class="pane-head">
+ <h3>الأسئلة <span class="muted" id="qCount"></span></h3>
+ <div style="display:flex; gap:6px;">
+ <button id="btnBulkAdd" class="btn btn-sm btn-accent">إضافة دفعة</button>
+ <button id="btnAddQuestion" class="btn btn-sm btn-primary">إضافة سؤال</button>
+ </div>
+ </div>
+ <p class="muted" style="margin-top:0;">الأسئلة اختيرت عشوائيًا من التصنيفات التي حددتها. يمكنك تعديلها أو إضافة أسئلتك.</p>
+ <div id="questionList" class="question-list"></div>
+ </div>
+ </section>
 
-      <!-- الإعداد -->
-      <section id="tab-setup" class="tab-pane">
-        <div class="panel panel-pad">
-          <h3>إعدادات اللعبة</h3>
-          <div class="grid2">
-            <div class="field"><label>اسم اللعبة</label><input id="setName" /></div>
-            <div class="field"><label>مدة كل مرحلة (ثانية)</label><input id="setTime" type="number" min="5" max="300" value="45" /></div>
-            <div class="field"><label>نقاط السؤال</label><input id="setPoints" type="number" min="0" value="1000" /></div>
-            <div class="field">
-              <label>مكافأة السرعة</label>
-              <select id="setSpeed"><option value="1">مفعّلة</option><option value="0">معطّلة</option></select>
-            </div>
-          </div>
-          <div class="row-actions">
-            <button id="btnSaveSettings" class="btn btn-primary">💾 حفظ التعديلات</button>
-            <button id="btnRestart" class="btn btn-accent">🔄 لعبة جديدة (أسئلة جديدة، نفس المشاركين)</button>
-          </div>
-        </div>
-        <div class="panel panel-pad" style="margin-top:14px;">
-          <h3>روابط اللعبة</h3>
-          <div class="quick-links">
-            <div>📺 شاشة العرض المشتركة: <a id="lnkDisplay" href="#" target="_blank">/display</a></div>
-            <div>📱 رابط انضمام المشاركين: <a id="lnkPlayer" href="#" target="_blank">/player</a></div>
-          </div>
-          <button id="btnClose" class="btn btn-sell btn-sm" style="margin-top:12px;">🗑 إغلاق الغرفة نهائيًا</button>
-        </div>
-      </section>
-    </div>
-  </div>
+ <!-- الإعداد -->
+ <section id="tab-setup" class="tab-pane">
+ <div class="panel panel-pad">
+ <h3>إعدادات اللعبة</h3>
+ <div class="grid2">
+ <div class="field"><label>اسم اللعبة</label><input id="setName" /></div>
+ <div class="field"><label>مدة كل مرحلة (ثانية)</label><input id="setTime" type="number" min="5" max="300" value="45" /></div>
+ <div class="field"><label>نقاط السؤال</label><input id="setPoints" type="number" min="0" value="1000" /></div>
+ <div class="field">
+ <label>مكافأة السرعة</label>
+ <select id="setSpeed"><option value="1">مفعّلة</option><option value="0">معطّلة</option></select>
+ </div>
+ </div>
+ <div class="row-actions">
+ <button id="btnSaveSettings" class="btn btn-primary">حفظ التعديلات</button>
+ <button id="btnRestart" class="btn btn-accent">لعبة جديدة (أسئلة جديدة، نفس المشاركين)</button>
+ </div>
+ </div>
+ <div class="panel panel-pad" style="margin-top:14px;">
+ <h3>روابط اللعبة</h3>
+ <div class="quick-links">
+ <div>شاشة العرض المشتركة: <a id="lnkDisplay" href="#" target="_blank">/display</a></div>
+ <div>رابط انضمام المشاركين: <a id="lnkPlayer" href="#" target="_blank">/player</a></div>
+ </div>
+ <button id="btnClose" class="btn btn-sell btn-sm" style="margin-top:12px;">إغلاق الغرفة نهائيًا</button>
+ </div>
+ </section>
+ </div>
+ </div>
 
-  <!-- نافذة إضافة دفعة أسئلة -->
-  <div id="bulkModal" class="overlay hidden">
-    <div class="panel qedit-box">
-      <button id="bulkClose" class="qr-close">✕</button>
-      <h3>إضافة دفعة أسئلة</h3>
-      <p class="muted" style="margin-top:0;">اكتب كل سؤال في سطر بالصيغة: <b>السؤال | الجواب</b> — أو <b>السؤال؟ الجواب</b></p>
-      <div class="field">
-        <textarea id="bulkText" rows="10" placeholder="ما عاصمة اليابان؟ | طوكيو&#10;كم عدد قارات العالم؟ | سبع&#10;أطول نهر في العالم؟ النيل" style="width:100%; font-family:inherit; font-size:15px; padding:12px; border-radius:10px; border:1px solid var(--border); resize:vertical;"></textarea>
-      </div>
-      <div class="row-actions">
-        <button id="bulkSave" class="btn btn-accent">➕ أضف الكل</button>
-      </div>
-    </div>
-  </div>
+ <!-- نافذة إضافة دفعة أسئلة -->
+ <div id="bulkModal" class="overlay hidden">
+ <div class="panel qedit-box">
+ <button id="bulkClose" class="qr-close">✕</button>
+ <h3>إضافة دفعة أسئلة</h3>
+ <p class="muted" style="margin-top:0;">اكتب كل سؤال في سطر بالصيغة: <b>السؤال | الجواب</b> — أو <b>السؤال؟ الجواب</b></p>
+ <div class="field">
+ <textarea id="bulkText" rows="10" placeholder="ما عاصمة اليابان؟ | طوكيو&#10;كم عدد قارات العالم؟ | سبع&#10;أطول نهر في العالم؟ النيل" style="width:100%; font-family:inherit; font-size:15px; padding:12px; border-radius:10px; border:1px solid var(--border); resize:vertical;"></textarea>
+ </div>
+ <div class="row-actions">
+ <button id="bulkSave" class="btn btn-accent">أضف الكل</button>
+ </div>
+ </div>
+ </div>
 
-  <!-- نافذة تحرير سؤال -->
-  <div id="qEditModal" class="overlay hidden">
-    <div class="panel qedit-box">
-      <button id="qEditClose" class="qr-close">✕</button>
-      <h3 id="qEditTitle">تحرير سؤال</h3>
-      <div class="field"><label>نص السؤال</label><input id="qeText" /></div>
-      <div class="field"><label>الجواب الصحيح</label><input id="qeAnswer" placeholder="الجواب الصحيح الوحيد" /></div>
-      <div class="field"><label>التصنيف (اختياري)</label><input id="qeCat" /></div>
-      <div class="grid2" style="margin-top:10px;">
-        <div class="field"><label>مدة السؤال (ثانية)</label><input id="qeTime" type="number" min="5" max="300" /></div>
-        <div class="field"><label>النقاط</label><input id="qePoints" type="number" min="0" /></div>
-      </div>
-      <div class="row-actions">
-        <button id="qeSave" class="btn btn-accent">💾 حفظ</button>
-      </div>
-    </div>
-  </div>
+ <!-- نافذة تحرير سؤال -->
+ <div id="qEditModal" class="overlay hidden">
+ <div class="panel qedit-box">
+ <button id="qEditClose" class="qr-close">✕</button>
+ <h3 id="qEditTitle">تحرير سؤال</h3>
+ <div class="field"><label>نص السؤال</label><input id="qeText" /></div>
+ <div class="field"><label>الجواب الصحيح</label><input id="qeAnswer" placeholder="الجواب الصحيح الوحيد" /></div>
+ <div class="field"><label>التصنيف (اختياري)</label><input id="qeCat" /></div>
+ <div class="grid2" style="margin-top:10px;">
+ <div class="field"><label>مدة السؤال (ثانية)</label><input id="qeTime" type="number" min="5" max="300" /></div>
+ <div class="field"><label>النقاط</label><input id="qePoints" type="number" min="0" /></div>
+ </div>
+ <div class="row-actions">
+ <button id="qeSave" class="btn btn-accent">حفظ</button>
+ </div>
+ </div>
+ </div>
 
-  <div id="toast"></div>
+ <div id="toast"></div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/shared/sound.js"></script>
-  <script src="/shared/util.js"></script>
-  <script src="/admin/admin.js"></script>
+ <script src="/socket.io/socket.io.js"></script>
+ <script src="/shared/sound.js"></script>
+ <script src="/shared/util.js"></script>
+ <script src="/admin/admin.js"></script>
 </body>
 </html>

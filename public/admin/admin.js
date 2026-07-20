@@ -31,7 +31,7 @@
   socket.on('auth:error', function (e) { fail(e.error || 'تعذّر الدخول كمضيف'); if (socket) socket.disconnect(); });
   socket.on('state', function (s) { state = s; render(); });
   socket.on('tick', function (t) {
-    if (state) { state.timeLeft = t.timeLeft; document.getElementById('cbTimer').textContent = (state.questionState === 'lies' || state.questionState === 'pick') ? '⏱ ' + t.timeLeft : ''; }
+    if (state) { state.timeLeft = t.timeLeft; document.getElementById('cbTimer').textContent = (state.questionState === 'lies' || state.questionState === 'pick') ? '' + t.timeLeft : ''; }
   });
   socket.on('room:closed', function () { fail('أُغلقت الغرفة.'); });
 
@@ -149,12 +149,12 @@
     document.getElementById('statusBadge').textContent =
       state.status === 'finished' ? 'انتهت'
       : state.currentIndex < 0 ? 'بانتظار الانضمام'
-      : state.questionState === 'lies' ? 'كتابة الأفخاخ 🕳️'
+      : state.questionState === 'lies' ? 'كتابة الأفخاخ'
       : state.questionState === 'pick' ? 'الاختيار'
       : state.questionState === 'revealed' ? 'كُشفت الإجابة' : '—';
     document.getElementById('cbNum').textContent = state.currentIndex >= 0 ? state.questionNumber : 0;
     document.getElementById('cbTotal').textContent = ' / ' + state.total;
-    document.getElementById('cbTimer').textContent = (state.questionState === 'lies' || state.questionState === 'pick') ? '⏱ ' + state.timeLeft : '';
+    document.getElementById('cbTimer').textContent = (state.questionState === 'lies' || state.questionState === 'pick') ? '' + state.timeLeft : '';
 
     updateControlButtons();
 
@@ -218,15 +218,15 @@
         var cls = 'live-opt opt-' + (i % 4);
         if (revealed && o.truth) cls += ' correct';
         var meta = [];
-        if (o.truth) meta.push('✅');
-        if (revealed && o.owners && o.owners.length) meta.push('🕳️ ' + o.owners.join('، '));
+        if (o.truth) meta.push('');
+        if (revealed && o.owners && o.owners.length) meta.push('' + o.owners.join('، '));
         optsWrap.appendChild(el('div', { class: cls }, [
           el('span', { class: 'otext' }, [o.text + (meta.length ? '  — ' + meta.join(' ') : '')]),
           el('span', { class: 'cnt mono' }, [String((o.pickedBy || []).length)])
         ]));
       });
       if (ph === 'revealed' && cur.trapMap && cur.trapMap.length) {
-        trapWrap.appendChild(el('h4', { style: 'margin:14px 0 6px;' }, ['🕳️ خريطة الأفخاخ']));
+        trapWrap.appendChild(el('h4', { style: 'margin:14px 0 6px;' }, ['خريطة الأفخاخ']));
         cur.trapMap.forEach(function (t) {
           trapWrap.appendChild(el('div', { class: 'trap-row' }, [
             el('b', {}, ['فخ «' + t.text + '» (' + t.owners.join('، ') + '): ']),
@@ -272,16 +272,16 @@
           el('div', { class: 'qrow-actions' }, [
             el('button', { class: 'btn btn-sm btn-ghost', text: '▲', onclick: function () { send('admin:question:move', { id: q.id, dir: 'up' }); } }),
             el('button', { class: 'btn btn-sm btn-ghost', text: '▼', onclick: function () { send('admin:question:move', { id: q.id, dir: 'down' }); } }),
-            el('button', { class: 'btn btn-sm', text: '✏', onclick: function () { openQEdit(q); } }),
-            el('button', { class: 'btn btn-sm btn-sell', text: '🗑', onclick: function () { if (confirm('حذف السؤال؟')) send('admin:question:remove', { id: q.id }); } })
+            el('button', { class: 'btn btn-sm', text: '', onclick: function () { openQEdit(q); } }),
+            el('button', { class: 'btn btn-sm btn-sell', text: '', onclick: function () { if (confirm('حذف السؤال؟')) send('admin:question:remove', { id: q.id }); } })
           ])
         ]),
-        el('div', { class: 'qrow-answer' }, ['✅ الجواب: ' + q.answer]),
+        el('div', { class: 'qrow-answer' }, ['الجواب: ' + q.answer]),
         el('div', { class: 'qrow-meta' }, [
           q.category ? el('span', { class: 'chip' }, [q.category]) : null,
           q.difficulty ? el('span', { class: 'chip' }, [q.difficulty]) : null,
-          el('span', { class: 'chip' }, ['⏱ ' + q.timeLimitSec + 'ث']),
-          el('span', { class: 'chip' }, ['⭐ ' + fmt(q.points)])
+          el('span', { class: 'chip' }, ['' + q.timeLimitSec + 'ث']),
+          el('span', { class: 'chip' }, ['' + fmt(q.points)])
         ])
       ]));
     });
